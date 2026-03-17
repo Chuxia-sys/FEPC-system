@@ -80,8 +80,9 @@ export function LoginPage() {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await fetch('/api/departments');
+        const res = await fetch('/api/departments/public');
         if (!res.ok) {
+          console.error('Failed to fetch departments:', res.status);
           setDepartments([]);
           return;
         }

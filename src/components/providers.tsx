@@ -10,6 +10,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 // Component that initializes notifications when user is logged in
 function NotificationProvider({ children }: { children: React.ReactNode }) {
   // This hook will connect to WebSocket when user is logged in
+  // The hook itself checks if session exists before connecting
   useNotifications();
   return <>{children}</>;
 }

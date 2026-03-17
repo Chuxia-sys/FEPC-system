@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import type { Socket } from 'socket.io-client';
 
 export interface NotificationData {
   id: string;
@@ -21,66 +21,90 @@ export function useNotifications() {
     // Only connect if user is logged in
     if (!session?.user?.id) return;
 
-    // Connect to notification WebSocket server
-    // Use XTransformPort for the gateway
-    const socket = io('/?XTransformPort=3003', {
-      transports: ['websocket', 'polling'],
-      forceNew: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-    });
+    let isMounted = true;
 
-    socketRef.current = socket;
+    const initSocket = async () => {
+      try {
+        // Dynamically import socket.io-client to avoid initial load errors
+        const { io } = await import('socket.io-client');
+        
+        if (!isMounted) return;
 
-    socket.on('connect', () => {
-      console.log('[Notifications] Connected to notification service');
-      // Join with user ID to receive targeted notifications
-      socket.emit('join', { userId: session.user.id });
-    });
+        // Connect to notification WebSocket server
+        // Use XTransformPort for the gateway
+        const socket = io('/?XTransformPort=3003', {
+          transports: ['websocket', 'polling'],
+          forceNew: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 10000,
+        });
 
-    socket.on('disconnect', () => {
-      console.log('[Notifications] Disconnected from notification service');
-    });
+        if (!isMounted) {
+          socket.disconnect();
+          return;
+        }
 
-    // Handle incoming notifications
-    socket.on('notification', (data: NotificationData) => {
-      console.log('[Notifications] Received:', data);
-      
-      // Show toast notification based on type
-      switch (data.type) {
-        case 'success':
-          toast.success(data.title, {
-            description: data.message,
-          });
-          break;
-        case 'warning':
-          toast.warning(data.title, {
-            description: data.message,
-          });
-          break;
-        case 'error':
-          toast.error(data.title, {
-            description: data.message,
-          });
-          break;
-        case 'info':
-        default:
-          toast.info(data.title, {
-            description: data.message,
-          });
-          break;
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          console.log('[Notifications] Connected to notification service');
+          // Join with user ID to receive targeted notifications
+          socket.emit('join', { userId: session.user.id });
+        });
+
+        socket.on('disconnect', () => {
+          console.log('[Notifications] Disconnected from notification service');
+        });
+
+        // Handle incoming notifications
+        socket.on('notification', (data: NotificationData) => {
+          console.log('[Notifications] Received:', data);
+          
+          // Show toast notification based on type
+          switch (data.type) {
+            case 'success':
+              toast.success(data.title, {
+                description: data.message,
+              });
+              break;
+            case 'warning':
+              toast.warning(data.title, {
+                description: data.message,
+              });
+              break;
+            case 'error':
+              toast.error(data.title, {
+                description: data.message,
+              });
+              break;
+            case 'info':
+            default:
+              toast.info(data.title, {
+                description: data.message,
+              });
+              break;
+          }
+        });
+
+        socket.on('connect_error', (error) => {
+          console.error('[Notifications] Connection error:', error);
+        });
+      } catch (error) {
+        console.error('[Notifications] Failed to initialize socket:', error);
+        // Silently fail - don't crash the app
       }
-    });
+    };
 
-    socket.on('connect_error', (error) => {
-      console.error('[Notifications] Connection error:', error);
-    });
+    initSocket();
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      isMounted = false;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
   }, [session?.user?.id]);
 
