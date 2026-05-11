@@ -111,12 +111,12 @@ export function Sidebar() {
             </div>
           )}
           {sidebarCollapsed && (
-            <div className="bg-white rounded-md p-1">
+            <div className="bg-white rounded-md p-1.5">
               <Image 
                 src="/tcu-logo.png" 
                 alt="TCU Logo" 
-                width={24} 
-                height={24}
+                width={32} 
+                height={32}
                 className="object-contain"
               />
             </div>
@@ -125,7 +125,10 @@ export function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/15 shrink-0"
+            className={cn(
+              "h-8 w-8 text-white/80 hover:text-white hover:bg-white/15 shrink-0",
+              sidebarCollapsed && "-mr-1"
+            )}
           >
             {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
