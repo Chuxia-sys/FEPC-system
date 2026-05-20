@@ -330,13 +330,13 @@ function ScheduleCard({
           </div>
         </motion.button>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs p-3 z-50 rounded-lg" sideOffset={8}>
-        <div className="space-y-1 text-xs">
-          <div className="font-bold">{getSubjectLabel(schedule)} — {getSubjectName(schedule)}</div>
-          <div className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{formatTime12Hour(schedule.startTime)} – {formatTime12Hour(schedule.endTime)}</div>
-          <div className="text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />{schedule.faculty?.name}</div>
-          <div className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{schedule.room?.roomName}{schedule.room?.building ? ` (${schedule.room.building})` : ''}</div>
-          <div className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{schedule.section?.sectionName}</div>
+      <TooltipContent side="top" className="max-w-xs p-3 z-50" sideOffset={8}>
+        <div className="space-y-1.5 text-xs">
+          <div className="font-semibold text-[#111827]">{getSubjectLabel(schedule)} — {getSubjectName(schedule)}</div>
+          <div className="text-[#4b5563] flex items-center gap-1"><Clock className="h-3 w-3" />{formatTime12Hour(schedule.startTime)} – {formatTime12Hour(schedule.endTime)}</div>
+          <div className="text-[#4b5563] flex items-center gap-1"><User className="h-3 w-3" />{schedule.faculty?.name}</div>
+          <div className="text-[#4b5563] flex items-center gap-1"><MapPin className="h-3 w-3" />{schedule.room?.roomName}{schedule.room?.building ? ` (${schedule.room.building})` : ''}</div>
+          <div className="text-[#4b5563] flex items-center gap-1"><Users className="h-3 w-3" />{schedule.section?.sectionName}</div>
           {isConflict && <div className="text-red-500 font-medium flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Conflict</div>}
         </div>
       </TooltipContent>
@@ -391,10 +391,10 @@ function OverlapOverflowCard({
 function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="text-muted-foreground mt-0.5 shrink-0">{icon}</div>
+      <div className="text-[#4b5563] mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{label}</p>
-        <p className="text-sm font-medium truncate">{value}</p>
+        <p className="text-[11px] text-[#4b5563] uppercase tracking-wider font-medium">{label}</p>
+        <p className="text-sm font-medium truncate text-[#111827]">{value}</p>
       </div>
     </div>
   );
@@ -1023,7 +1023,7 @@ export function CalendarView() {
                     className={cn(
                       'rounded-xl border p-3.5 cursor-pointer transition-all duration-200',
                       'hover:shadow-md active:scale-[0.98]',
-                      'hover:bg-black/[0.04] dark:hover:bg-white/[0.08]',
+                      'hover:brightness-[0.96] dark:hover:brightness-[0.9]',
                       'border-l-[4px]',
                       color.bg,
                       color.border,
@@ -1098,7 +1098,7 @@ export function CalendarView() {
       {/* ── Schedule Detail Dialog ─────────────────────────────────── */}
       <Dialog open={!!selectedSchedule} onOpenChange={(open) => !open && setSelectedSchedule(null)}>
         {selectedSchedule && (
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg !bg-[#ffffff] !text-[#111827] !border-[#e5e7eb] !shadow-[0_10px_30px_rgba(0,0,0,0.25)] !rounded-2xl dark:!bg-[#ffffff] dark:!text-[#111827] dark:!border-[#e5e7eb] [&>button]:!text-[#111827] [&>button]:hover:!bg-[#f5f5f5]">
             <DialogHeader>
               <div className="flex items-start gap-3">
                 <div className={cn(
@@ -1108,10 +1108,10 @@ export function CalendarView() {
                   <BookOpen className={cn('h-5 w-5', CARD_COLORS[colorMap.get(selectedSchedule.subjectId) || 0].text)} />
                 </div>
                 <div className="min-w-0">
-                  <DialogTitle className="text-lg">
+                  <DialogTitle className="text-lg !text-[#111827]">
                     {selectedSchedule.subject?.subjectName || 'Unknown Subject'}
                   </DialogTitle>
-                  <DialogDescription className="mt-0.5">
+                  <DialogDescription className="mt-0.5 !text-[#4b5563]">
                     {selectedSchedule.subject?.subjectCode} • {selectedSchedule.day}
                   </DialogDescription>
                 </div>
@@ -1182,11 +1182,11 @@ export function CalendarView() {
 
               {/* Conflict warning */}
               {selectedSchedule.status === 'conflict' && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
                   <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Schedule Conflict</p>
-                    <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
+                    <p className="text-sm font-medium text-red-700">Schedule Conflict</p>
+                    <p className="text-xs text-red-600 mt-0.5">
                       This schedule conflicts with another assignment. Please check the conflicts page for details.
                     </p>
                   </div>
@@ -1195,7 +1195,7 @@ export function CalendarView() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedSchedule(null)}>
+              <Button variant="outline" className="!border-[#e5e7eb] !text-[#111827] hover:!bg-[#f5f5f5]" onClick={() => setSelectedSchedule(null)}>
                 Close
               </Button>
             </DialogFooter>

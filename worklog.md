@@ -129,3 +129,53 @@ Stage Summary:
 - Card hover uses smooth pseudo-element overlay that preserves original card colors
 - Firebase Firestore fully functional after changes
 - Key insight: previous fix only addressed CSS variables and Tailwind classes but missed the actual tooltip component which was the primary source of the red popup
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Update schedule calendar modal and card hover effects for dark/light mode
+
+Work Log:
+- Identified that the tooltip popup was using dark glassmorphism (rgba(30,41,59,0.92)) in dark mode from previous fix - user wants WHITE background instead
+- Identified that the schedule card hover was too aggressive with pseudo-element overlays and scale(1.02)
+- Updated all components to match user's exact design specifications
+
+Changes Made:
+
+1. src/components/ui/tooltip.tsx:
+   - Changed from dark glassmorphism to ALWAYS WHITE: bg-[#ffffff], text-[#111827], border-[#e5e7eb]
+   - Shadow: 0 10px 30px rgba(0,0,0,0.25) - works in both light and dark modes
+   - Border radius: rounded-2xl (16px) as requested
+   - Arrow: fill-[#ffffff] always white
+   - Removed all dark: overrides - white background applies universally
+
+2. src/components/calendar/CalendarView.tsx:
+   - TooltipContent text: title uses text-[#111827] font-semibold, secondary text uses text-[#4b5563]
+   - DetailItem helper: icon color text-[#4b5563], label text-[#4b5563], value text-[#111827]
+   - DialogContent: forced white bg with !bg-[#ffffff], !text-[#111827], !border-[#e5e7eb], !rounded-2xl, !shadow-[0_10px_30px_rgba(0,0,0,0.25)]
+   - Dialog close button: [&>button]:!text-[#111827] [&>button]:hover:!bg-[#f5f5f5]
+   - DialogTitle: !text-[#111827]
+   - DialogDescription: !text-[#4b5563]
+   - Close button: !border-[#e5e7eb] !text-[#111827] hover:!bg-[#f5f5f5]
+   - Conflict warning: removed dark: overrides (always shows on white)
+   - Mobile list card hover: changed from overlay to brightness filter: hover:brightness-[0.96] dark:hover:brightness-[0.9]
+
+3. src/app/globals.css:
+   - Replaced aggressive pseudo-element overlay hover with simple filter: brightness() dimming
+   - Light mode: filter: brightness(0.96) + scale(1.015) + subtle shadow
+   - Dark mode: filter: brightness(0.9) + deeper shadow
+   - Transition: all 0.2s ease (smoother, less aggressive)
+   - Removed all ::before pseudo-element code entirely (much simpler)
+
+Verification:
+- Lint: 0 errors (1 pre-existing TanStack Table warning)
+- Firebase: Connected to project "for-commission", status healthy
+- Dev server: All endpoints returning 200
+- All API routes untouched: schedules, rooms, sections, health all functional
+
+Stage Summary:
+- Tooltip/Modal: Always white (#ffffff) background in both light AND dark mode with #111827 text and #4b55e7eb border
+- Card hover: Subtle brightness dimming (0.96 light / 0.9 dark) instead of color overlays
+- Dialog: White background forced in dark mode with proper text colors
+- Transitions: Smooth 0.2s ease throughout
+- Firebase Firestore: Fully functional, no backend changes made

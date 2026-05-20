@@ -249,53 +249,24 @@
     100% { background-position: 200% 0; }
   }
 
-  /* Schedule card hover overlay — uses pseudo-element so it
-     layers ON TOP of the card's existing background instead of
-     replacing it (which caused the red/blank background bug).
-     Light mode: clean white with soft gray border + elegant shadow
-     Dark mode: glassmorphism panel with subtle white overlay + glow */
+  /* Schedule card hover — subtle dimming effect that preserves
+     the card's original colors. Uses filter: brightness() for a
+     smooth, non-distracting interaction. */
   .schedule-card-hover {
     position: relative;
-    transition: all 0.25s ease;
-  }
-  .schedule-card-hover::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: transparent;
-    border: 1px solid transparent;
-    opacity: 0;
-    transition: opacity 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .schedule-card-hover:hover::before {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
   }
   .schedule-card-hover:hover {
     z-index: 20;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-    transform: scale(1.02);
+    filter: brightness(0.96);
+    transform: scale(1.015);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
-  /* Dark mode — glassmorphism with soft white luminance overlay */
-  .dark .schedule-card-hover::before {
-    background: transparent;
-    border-color: transparent;
-  }
-  .dark .schedule-card-hover:hover::before {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  }
+  /* Dark mode — slightly stronger dim for visibility on dark bg */
   .dark .schedule-card-hover:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-    transform: scale(1.02);
+    filter: brightness(0.9);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
   /* Dark mode overrides — ensure no gradients bleed through */
