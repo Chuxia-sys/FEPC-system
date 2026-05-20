@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -21,7 +20,7 @@ import { cn, formatTime12Hour, safeJson } from '@/lib/utils';
 import {
   Calendar as CalendarIcon, Filter, Printer, Download, User, MapPin, Users,
   Clock, BookOpen, AlertTriangle, RefreshCw, Building2, GraduationCap,
-  Layers, X, ChevronRight, Palette,
+  Layers, X, ChevronRight, Palette, CheckCircle, Eye,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Schedule, User as UserType, Section, Room, DayOfWeek } from '@/types';
@@ -37,21 +36,21 @@ const MAX_VISIBLE_OVERLAPS = 3; // max cards shown side by side
 
 // ─── Color palette (12 pastel colors for light & dark mode) ───────────
 // Hover effect is handled by the .schedule-card-hover CSS class
-// which uses a pseudo-element overlay (see globals.css).
-// This preserves the card's original pastel background on hover.
+// which uses filter: brightness() dimming (see globals.css).
+// headerBg/headerText: used for the modal header banner gradient.
 const CARD_COLORS = [
-  { bg: 'bg-emerald-100 dark:bg-emerald-950/50', border: 'border-emerald-400 dark:border-emerald-700', text: 'text-emerald-900 dark:text-emerald-100', accent: 'bg-emerald-500', dot: 'bg-emerald-500' },
-  { bg: 'bg-sky-100 dark:bg-sky-950/50', border: 'border-sky-400 dark:border-sky-700', text: 'text-sky-900 dark:text-sky-100', accent: 'bg-sky-500', dot: 'bg-sky-500' },
-  { bg: 'bg-violet-100 dark:bg-violet-950/50', border: 'border-violet-400 dark:border-violet-700', text: 'text-violet-900 dark:text-violet-100', accent: 'bg-violet-500', dot: 'bg-violet-500' },
-  { bg: 'bg-amber-100 dark:bg-amber-950/50', border: 'border-amber-400 dark:border-amber-700', text: 'text-amber-900 dark:text-amber-100', accent: 'bg-amber-500', dot: 'bg-amber-500' },
-  { bg: 'bg-rose-100 dark:bg-rose-950/50', border: 'border-rose-400 dark:border-rose-700', text: 'text-rose-900 dark:text-rose-100', accent: 'bg-rose-500', dot: 'bg-rose-500' },
-  { bg: 'bg-teal-100 dark:bg-teal-950/50', border: 'border-teal-400 dark:border-teal-700', text: 'text-teal-900 dark:text-teal-100', accent: 'bg-teal-500', dot: 'bg-teal-500' },
-  { bg: 'bg-orange-100 dark:bg-orange-950/50', border: 'border-orange-400 dark:border-orange-700', text: 'text-orange-900 dark:text-orange-100', accent: 'bg-orange-500', dot: 'bg-orange-500' },
-  { bg: 'bg-cyan-100 dark:bg-cyan-950/50', border: 'border-cyan-400 dark:border-cyan-700', text: 'text-cyan-900 dark:text-cyan-100', accent: 'bg-cyan-500', dot: 'bg-cyan-500' },
-  { bg: 'bg-fuchsia-100 dark:bg-fuchsia-950/50', border: 'border-fuchsia-400 dark:border-fuchsia-700', text: 'text-fuchsia-900 dark:text-fuchsia-100', accent: 'bg-fuchsia-500', dot: 'bg-fuchsia-500' },
-  { bg: 'bg-lime-100 dark:bg-lime-950/50', border: 'border-lime-400 dark:border-lime-700', text: 'text-lime-900 dark:text-lime-100', accent: 'bg-lime-500', dot: 'bg-lime-500' },
-  { bg: 'bg-pink-100 dark:bg-pink-950/50', border: 'border-pink-400 dark:border-pink-700', text: 'text-pink-900 dark:text-pink-100', accent: 'bg-pink-500', dot: 'bg-pink-500' },
-  { bg: 'bg-yellow-100 dark:bg-yellow-950/50', border: 'border-yellow-400 dark:border-yellow-700', text: 'text-yellow-900 dark:text-yellow-100', accent: 'bg-yellow-500', dot: 'bg-yellow-500' },
+  { bg: 'bg-emerald-100 dark:bg-emerald-950/50', border: 'border-emerald-400 dark:border-emerald-700', text: 'text-emerald-900 dark:text-emerald-100', accent: 'bg-emerald-500', dot: 'bg-emerald-500', headerBg: 'from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-900', headerText: 'text-white', accentBg: 'bg-emerald-600 dark:bg-emerald-500' },
+  { bg: 'bg-sky-100 dark:bg-sky-950/50', border: 'border-sky-400 dark:border-sky-700', text: 'text-sky-900 dark:text-sky-100', accent: 'bg-sky-500', dot: 'bg-sky-500', headerBg: 'from-sky-600 to-sky-700 dark:from-sky-700 dark:to-sky-900', headerText: 'text-white', accentBg: 'bg-sky-600 dark:bg-sky-500' },
+  { bg: 'bg-violet-100 dark:bg-violet-950/50', border: 'border-violet-400 dark:border-violet-700', text: 'text-violet-900 dark:text-violet-100', accent: 'bg-violet-500', dot: 'bg-violet-500', headerBg: 'from-violet-600 to-violet-700 dark:from-violet-700 dark:to-violet-900', headerText: 'text-white', accentBg: 'bg-violet-600 dark:bg-violet-500' },
+  { bg: 'bg-amber-100 dark:bg-amber-950/50', border: 'border-amber-400 dark:border-amber-700', text: 'text-amber-900 dark:text-amber-100', accent: 'bg-amber-500', dot: 'bg-amber-500', headerBg: 'from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-800', headerText: 'text-white', accentBg: 'bg-amber-600 dark:bg-amber-500' },
+  { bg: 'bg-rose-100 dark:bg-rose-950/50', border: 'border-rose-400 dark:border-rose-700', text: 'text-rose-900 dark:text-rose-100', accent: 'bg-rose-500', dot: 'bg-rose-500', headerBg: 'from-rose-600 to-rose-700 dark:from-rose-700 dark:to-rose-900', headerText: 'text-white', accentBg: 'bg-rose-600 dark:bg-rose-500' },
+  { bg: 'bg-teal-100 dark:bg-teal-950/50', border: 'border-teal-400 dark:border-teal-700', text: 'text-teal-900 dark:text-teal-100', accent: 'bg-teal-500', dot: 'bg-teal-500', headerBg: 'from-teal-600 to-teal-700 dark:from-teal-700 dark:to-teal-900', headerText: 'text-white', accentBg: 'bg-teal-600 dark:bg-teal-500' },
+  { bg: 'bg-orange-100 dark:bg-orange-950/50', border: 'border-orange-400 dark:border-orange-700', text: 'text-orange-900 dark:text-orange-100', accent: 'bg-orange-500', dot: 'bg-orange-500', headerBg: 'from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-800', headerText: 'text-white', accentBg: 'bg-orange-600 dark:bg-orange-500' },
+  { bg: 'bg-cyan-100 dark:bg-cyan-950/50', border: 'border-cyan-400 dark:border-cyan-700', text: 'text-cyan-900 dark:text-cyan-100', accent: 'bg-cyan-500', dot: 'bg-cyan-500', headerBg: 'from-cyan-600 to-cyan-700 dark:from-cyan-700 dark:to-cyan-900', headerText: 'text-white', accentBg: 'bg-cyan-600 dark:bg-cyan-500' },
+  { bg: 'bg-fuchsia-100 dark:bg-fuchsia-950/50', border: 'border-fuchsia-400 dark:border-fuchsia-700', text: 'text-fuchsia-900 dark:text-fuchsia-100', accent: 'bg-fuchsia-500', dot: 'bg-fuchsia-500', headerBg: 'from-fuchsia-600 to-fuchsia-700 dark:from-fuchsia-700 dark:to-fuchsia-900', headerText: 'text-white', accentBg: 'bg-fuchsia-600 dark:bg-fuchsia-500' },
+  { bg: 'bg-lime-100 dark:bg-lime-950/50', border: 'border-lime-400 dark:border-lime-700', text: 'text-lime-900 dark:text-lime-100', accent: 'bg-lime-500', dot: 'bg-lime-500', headerBg: 'from-lime-500 to-lime-600 dark:from-lime-600 dark:to-lime-800', headerText: 'text-white', accentBg: 'bg-lime-600 dark:bg-lime-500' },
+  { bg: 'bg-pink-100 dark:bg-pink-950/50', border: 'border-pink-400 dark:border-pink-700', text: 'text-pink-900 dark:text-pink-100', accent: 'bg-pink-500', dot: 'bg-pink-500', headerBg: 'from-pink-600 to-pink-700 dark:from-pink-700 dark:to-pink-900', headerText: 'text-white', accentBg: 'bg-pink-600 dark:bg-pink-500' },
+  { bg: 'bg-yellow-100 dark:bg-yellow-950/50', border: 'border-yellow-400 dark:border-yellow-700', text: 'text-yellow-900 dark:text-yellow-100', accent: 'bg-yellow-500', dot: 'bg-yellow-500', headerBg: 'from-yellow-500 to-yellow-600 dark:from-yellow-600 dark:to-yellow-800', headerText: 'text-white', accentBg: 'bg-yellow-600 dark:bg-yellow-500' },
 ];
 
 // ─── Time helpers ─────────────────────────────────────────────────────
@@ -387,28 +386,37 @@ function OverlapOverflowCard({
   );
 }
 
-// ─── Detail Item helper ───────────────────────────────────────────────
-function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+// ─── Info Tile (modern card tile for modal) ──────────────────────────
+function InfoTile({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="text-[#4b5563] mt-0.5 shrink-0">{icon}</div>
+    <div className={cn(
+      'flex items-start gap-3 rounded-xl p-3',
+      'bg-gray-50 dark:bg-white/[0.04] border border-gray-200/60 dark:border-white/[0.06]',
+      'transition-colors duration-200',
+      className,
+    )}>
+      <div className="text-gray-400 dark:text-gray-500 mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[11px] text-[#4b5563] uppercase tracking-wider font-medium">{label}</p>
-        <p className="text-sm font-medium truncate text-[#111827]">{value}</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">{label}</p>
+        <p className="text-sm font-semibold truncate text-gray-800 dark:text-gray-200 mt-0.5">{value}</p>
       </div>
     </div>
   );
 }
 
-// ─── Status Badge helper ──────────────────────────────────────────────
-function StatusBadge({ status }: { status: string }) {
-  const variant = status === 'conflict' ? 'destructive' : 'outline';
-  const extraClass = cn(
-    status === 'approved' && 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-700',
-    status === 'generated' && 'bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-700',
-    status === 'modified' && 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-700',
+// ─── Quick Info Pill (for header banner) ─────────────────────────────
+function QuickPill({ icon, children, className }: { icon: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium',
+      'bg-white/15 backdrop-blur-sm border border-white/10',
+      'text-white/90',
+      className,
+    )}>
+      {icon}
+      {children}
+    </span>
   );
-  return <Badge variant={variant} className={cn('shrink-0', extraClass)}>{status}</Badge>;
 }
 
 // ─── Current Time Indicator ───────────────────────────────────────────
@@ -1095,112 +1103,176 @@ export function CalendarView() {
         </CardContent>
       </Card>
 
-      {/* ── Schedule Detail Dialog ─────────────────────────────────── */}
+      {/* ── Schedule Detail Dialog (Premium Redesign) ──────────────── */}
       <Dialog open={!!selectedSchedule} onOpenChange={(open) => !open && setSelectedSchedule(null)}>
-        {selectedSchedule && (
-          <DialogContent className="sm:max-w-lg !bg-[#ffffff] !text-[#111827] !border-[#e5e7eb] !shadow-[0_10px_30px_rgba(0,0,0,0.25)] !rounded-2xl dark:!bg-[#ffffff] dark:!text-[#111827] dark:!border-[#e5e7eb] [&>button]:!text-[#111827] [&>button]:hover:!bg-[#f5f5f5]">
-            <DialogHeader>
-              <div className="flex items-start gap-3">
-                <div className={cn(
-                  'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-                  CARD_COLORS[colorMap.get(selectedSchedule.subjectId) || 0].bg,
-                )}>
-                  <BookOpen className={cn('h-5 w-5', CARD_COLORS[colorMap.get(selectedSchedule.subjectId) || 0].text)} />
-                </div>
-                <div className="min-w-0">
-                  <DialogTitle className="text-lg !text-[#111827]">
-                    {selectedSchedule.subject?.subjectName || 'Unknown Subject'}
-                  </DialogTitle>
-                  <DialogDescription className="mt-0.5 !text-[#4b5563]">
-                    {selectedSchedule.subject?.subjectCode} • {selectedSchedule.day}
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
+        {selectedSchedule && (() => {
+          const colorIndex = colorMap.get(selectedSchedule.subjectId) || 0;
+          const color = CARD_COLORS[colorIndex];
+          const isConflict = selectedSchedule.status === 'conflict';
+          const statusIcon = selectedSchedule.status === 'approved'
+            ? <CheckCircle className="h-3 w-3 text-emerald-400" />
+            : selectedSchedule.status === 'conflict'
+              ? <AlertTriangle className="h-3 w-3 text-red-300" />
+              : <Clock className="h-3 w-3 text-white/70" />;
 
-            <div className="space-y-4">
-              {/* Status badge */}
-              <div className="flex items-center gap-2">
-                <StatusBadge status={selectedSchedule.status} />
-                {selectedSchedule.section?.yearLevel && (
-                  <Badge variant="outline" className="text-xs">
-                    <GraduationCap className="h-3 w-3 mr-1" />
-                    Year {selectedSchedule.section.yearLevel}
-                  </Badge>
-                )}
-              </div>
+          return (
+            <DialogContent
+              className="sm:max-w-lg !p-0 !gap-0 !overflow-hidden !rounded-2xl !border-0 !shadow-[0_25px_60px_rgba(0,0,0,0.3)]"
+              showCloseButton={false}
+            >
+              {/* ── Colored Header Banner ────────────────────────────── */}
+              <div className={cn(
+                'relative px-5 pt-5 pb-4 bg-gradient-to-br',
+                color.headerBg,
+              )}>
+                {/* Frosted close button */}
+                <button
+                  onClick={() => setSelectedSchedule(null)}
+                  className={cn(
+                    'absolute top-3.5 right-3.5',
+                    'flex items-center justify-center h-7 w-7 rounded-full',
+                    'bg-white/15 backdrop-blur-md border border-white/20',
+                    'text-white/80 hover:text-white hover:bg-white/25',
+                    'transition-all duration-200',
+                  )}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
 
-              {/* Details grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <DetailItem
-                  icon={<User className="h-4 w-4" />}
-                  label="Faculty"
-                  value={selectedSchedule.faculty?.name || 'N/A'}
-                />
-                {selectedSchedule.faculty?.department && (
-                  <DetailItem
-                    icon={<Building2 className="h-4 w-4" />}
-                    label="Faculty Dept"
-                    value={selectedSchedule.faculty.department.name}
-                  />
-                )}
-                <DetailItem
-                  icon={<MapPin className="h-4 w-4" />}
-                  label="Room"
-                  value={selectedSchedule.room?.roomName || 'N/A'}
-                />
-                {selectedSchedule.room?.building && (
-                  <DetailItem
-                    icon={<Building2 className="h-4 w-4" />}
-                    label="Building"
-                    value={selectedSchedule.room.building}
-                  />
-                )}
-                <DetailItem
-                  icon={<Users className="h-4 w-4" />}
-                  label="Section"
-                  value={selectedSchedule.section?.sectionName || 'N/A'}
-                />
-                <DetailItem
-                  icon={<Clock className="h-4 w-4" />}
-                  label="Time"
-                  value={`${formatTime12Hour(selectedSchedule.startTime)} – ${formatTime12Hour(selectedSchedule.endTime)}`}
-                />
-                <DetailItem
-                  icon={<CalendarIcon className="h-4 w-4" />}
-                  label="Day"
-                  value={selectedSchedule.day}
-                />
-                {selectedSchedule.subject?.department && (
-                  <DetailItem
-                    icon={<Layers className="h-4 w-4" />}
-                    label="Department"
-                    value={selectedSchedule.subject.department.name}
-                  />
-                )}
-              </div>
-
-              {/* Conflict warning */}
-              {selectedSchedule.status === 'conflict' && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
-                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-red-700">Schedule Conflict</p>
-                    <p className="text-xs text-red-600 mt-0.5">
-                      This schedule conflicts with another assignment. Please check the conflicts page for details.
-                    </p>
+                {/* Icon + Title row */}
+                <div className="flex items-start gap-3.5 pr-8">
+                  <div className={cn(
+                    'w-11 h-11 rounded-xl flex items-center justify-center shrink-0',
+                    'bg-white/15 backdrop-blur-sm border border-white/10',
+                  )}>
+                    <BookOpen className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 pt-0.5">
+                    <DialogTitle className="!text-base sm:!text-lg !font-bold !text-white !leading-tight truncate">
+                      {selectedSchedule.subject?.subjectName || 'Unknown Subject'}
+                    </DialogTitle>
+                    <DialogDescription className="!text-white/65 !mt-1 !text-xs sm:!text-sm">
+                      {selectedSchedule.subject?.subjectCode}
+                      {selectedSchedule.section?.sectionName && ` · ${selectedSchedule.section.sectionName}`}
+                    </DialogDescription>
                   </div>
                 </div>
-              )}
-            </div>
 
-            <DialogFooter>
-              <Button variant="outline" className="!border-[#e5e7eb] !text-[#111827] hover:!bg-[#f5f5f5]" onClick={() => setSelectedSchedule(null)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
+                {/* Quick Info Pills */}
+                <div className="flex flex-wrap gap-2 mt-3.5">
+                  <QuickPill icon={<Clock className="h-3 w-3" />}>
+                    {formatTime12Hour(selectedSchedule.startTime)} – {formatTime12Hour(selectedSchedule.endTime)}
+                  </QuickPill>
+                  <QuickPill icon={<CalendarIcon className="h-3 w-3" />}>
+                    {selectedSchedule.day}
+                  </QuickPill>
+                  <QuickPill icon={statusIcon} className={cn(
+                    isConflict && 'bg-red-500/25 border-red-400/30',
+                    selectedSchedule.status === 'approved' && 'bg-emerald-500/20 border-emerald-400/25',
+                    selectedSchedule.status === 'generated' && 'bg-sky-500/20 border-sky-400/25',
+                    selectedSchedule.status === 'modified' && 'bg-amber-500/20 border-amber-400/25',
+                  )}>
+                    {selectedSchedule.status}
+                  </QuickPill>
+                </div>
+              </div>
+
+              {/* ── Body (light/dark adaptive) ───────────────────────── */}
+              <div className="px-5 py-4 bg-white dark:bg-[#1a1d26] space-y-3.5">
+                {/* Information Card Grid */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <InfoTile
+                    icon={<User className="h-4 w-4" />}
+                    label="Faculty"
+                    value={selectedSchedule.faculty?.name || 'N/A'}
+                  />
+                  <InfoTile
+                    icon={<MapPin className="h-4 w-4" />}
+                    label="Room"
+                    value={selectedSchedule.room?.roomName || 'N/A'}
+                  />
+                </div>
+
+                {/* Full-width building tile (if available) */}
+                {(selectedSchedule.room?.building || selectedSchedule.faculty?.department) && (
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {selectedSchedule.room?.building && (
+                      <InfoTile
+                        icon={<Building2 className="h-4 w-4" />}
+                        label="Building"
+                        value={selectedSchedule.room.building}
+                      />
+                    )}
+                    {selectedSchedule.faculty?.department && (
+                      <InfoTile
+                        icon={<Layers className="h-4 w-4" />}
+                        label="Faculty Department"
+                        value={selectedSchedule.faculty.department.name}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Extra info row */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <InfoTile
+                    icon={<Users className="h-4 w-4" />}
+                    label="Section"
+                    value={selectedSchedule.section?.sectionName || 'N/A'}
+                  />
+                  {selectedSchedule.subject?.department && (
+                    <InfoTile
+                      icon={<GraduationCap className="h-4 w-4" />}
+                      label="Department"
+                      value={selectedSchedule.subject.department.name}
+                    />
+                  )}
+                </div>
+
+                {/* Conflict warning */}
+                {isConflict && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200/60 dark:border-red-900/30">
+                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">Schedule Conflict</p>
+                      <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
+                        This schedule conflicts with another assignment. Check the conflicts page for details.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Footer Actions ────────────────────────────────────── */}
+              <div className="px-5 py-3.5 border-t border-gray-100 dark:border-white/[0.06] bg-white dark:bg-[#1a1d26] flex items-center justify-end gap-2.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg px-4"
+                  onClick={() => setSelectedSchedule(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  className={cn(
+                    'rounded-lg px-5 text-white font-medium',
+                    'transition-all duration-200',
+                    color.accentBg,
+                    'hover:opacity-90',
+                  )}
+                  onClick={() => {
+                    // Navigate to schedule detail or close
+                    setSelectedSchedule(null);
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  View Full Details
+                </Button>
+              </div>
+            </DialogContent>
+          );
+        })()}
       </Dialog>
     </motion.div>
   );

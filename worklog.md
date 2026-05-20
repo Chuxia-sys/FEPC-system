@@ -179,3 +179,67 @@ Stage Summary:
 - Dialog: White background forced in dark mode with proper text colors
 - Transitions: Smooth 0.2s ease throughout
 - Firebase Firestore: Fully functional, no backend changes made
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Redesign Course Schedule Modal with premium modern UI, dark mode compatibility
+
+Work Log:
+- Analyzed the existing modal structure (DialogContent with plain white bg, DetailItem helpers, StatusBadge, single Close button)
+- Designed comprehensive new modal with: colored header banner, quick info pills, card tile grid, dual-action footer
+- Extended CARD_COLORS with 3 new properties: headerBg (gradient classes), headerText, accentBg (for primary action button)
+
+Changes Made:
+
+1. CARD_COLORS palette extended (12 entries):
+   - Added `headerBg`: gradient Tailwind classes for modal header (e.g., 'from-emerald-600 to-emerald-700 dark:from-emerald-700 dark:to-emerald-900')
+   - Added `headerText`: 'text-white' for all
+   - Added `accentBg`: color for primary action button (e.g., 'bg-emerald-600 dark:bg-emerald-500')
+
+2. New components:
+   - InfoTile: Modern card tile with rounded-xl, bg-gray-50/dark:bg-white/[0.04], subtle border, icon + uppercase label + bold value
+   - QuickPill: Frosted glass pill for header banner (bg-white/15, backdrop-blur-sm, border-white/10, text-white/90)
+
+3. Removed old components:
+   - DetailItem (replaced by InfoTile)
+   - StatusBadge (replaced by QuickPill in header)
+   - Badge import (no longer needed)
+
+4. Modal structure redesign:
+   - HEADER: Colored gradient banner using subject color (bg-gradient-to-br + color.headerBg)
+     - Frosted close button (X): bg-white/15, backdrop-blur-md, rounded-full
+     - Course icon: In semi-transparent rounded-xl container (bg-white/15, border-white/10)
+     - Title: Bold white text, DialogTitle with !text-white
+     - Subtitle: subjectCode + sectionName in white/65
+     - Quick Info Pills: Time (clock), Day (calendar), Status (checkmark/alert/clock) with semantic accent colors
+   - BODY: bg-white dark:bg-[#1a1d26]
+     - Faculty + Room: 2-column grid of InfoTiles
+     - Building + Faculty Dept: Full-width InfoTiles (conditional)
+     - Section + Department: 2-column grid
+     - Conflict warning: Red card with proper dark mode support
+   - FOOTER: Dual-action layout
+     - Close: Ghost button (gray, minimal)
+     - View Full Details: Primary button with subject color (color.accentBg), Eye icon
+
+5. DialogContent styling:
+   - !p-0 !gap-0 !overflow-hidden !rounded-2xl !border-0
+   - !shadow-[0_25px_60px_rgba(0,0,0,0.3)] for premium depth
+   - showCloseButton={false} (custom close in header)
+
+6. Lucide imports added: CheckCircle, Eye
+
+Verification:
+- Lint: 0 errors (1 pre-existing TanStack Table warning)
+- Firebase: Connected to project "for-commission", status healthy
+- Dev server: All endpoints returning 200, no compilation errors
+- Zero backend files modified
+
+Stage Summary:
+- Complete modal redesign with premium academic dashboard aesthetic
+- Subject-colored gradient header with frosted glass elements
+- Quick info pills with semantic color coding
+- Modern info card tile grid (2-col + full-width)
+- Dual-action footer with theme-colored primary button
+- Full dark mode compatibility (bg-[#1a1d26] body, proper border/text colors)
+- All Firebase Firestore connections preserved
