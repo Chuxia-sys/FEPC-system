@@ -42,6 +42,7 @@ interface AppState {
   // Department Filter
   selectedDepartment: string | null;
   setSelectedDepartment: (id: string | null) => void;
+  initializeDepartmentFromSession: (role?: string | null, departmentId?: string | null) => void;
   
   // Calendar Filters
   calendarFilters: CalendarFilters;
@@ -62,7 +63,7 @@ const defaultCalendarFilters: CalendarFilters = {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Navigation
       viewMode: 'dashboard',
       setViewMode: (mode) => set({ viewMode: mode }),
@@ -76,6 +77,16 @@ export const useAppStore = create<AppState>()(
       // Department Filter
       selectedDepartment: null,
       setSelectedDepartment: (id) => set({ selectedDepartment: id }),
+      initializeDepartmentFromSession: (role, departmentId) => {
+        // If the user is a department_head and has a departmentId, auto-set the selected department
+        if (role === 'department_head' && departmentId) {
+          // Only set if not already set to this department (avoid unnecessary re-renders)
+          if (get().selectedDepartment !== departmentId) {
+            set({ selectedDepartment: departmentId });
+          }
+        }
+        // For admin or other roles, leave selectedDepartment as-is (allow manual selection)
+      },
       
       // Calendar Filters
       calendarFilters: defaultCalendarFilters,

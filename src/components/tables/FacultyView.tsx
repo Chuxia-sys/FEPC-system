@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useAppStore } from '@/store';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from './DataTable';
 import { Button } from '@/components/ui/button';
@@ -44,12 +46,15 @@ import {
   Mail,
   Phone,
   Building2,
+  Lock,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { User, Department, Schedule } from '@/types';
 import { safeJson } from '@/lib/utils';
 
 export function FacultyView() {
+  const { data: session } = useSession();
+  const { initializeDepartmentFromSession } = useAppStore();
   const [faculty, setFaculty] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -61,14 +66,29 @@ export function FacultyView() {
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  const isDeptHead = session?.user?.role === 'department_head';
+  const deptHeadDepartmentId = isDeptHead ? session?.user?.departmentId : null;
+
+  // Initialize department from session for dept_head isolation
+  useEffect(() => {
+    if (session?.user) {
+      initializeDepartmentFromSession(session.user.role, session.user.departmentId);
+    }
+  }, [session?.user, initializeDepartmentFromSession]);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
+      // For dept_head, pass departmentId query param to filter to their department
+      const facultyUrl = isDeptHead && deptHeadDepartmentId
+        ? `/api/users?role=faculty&departmentId=${deptHeadDepartmentId}`
+        : '/api/users?role=faculty';
+
       const [usersRes, deptsRes, schedulesRes] = await Promise.all([
-        fetch('/api/users?role=faculty'),
+        fetch(facultyUrl),
         fetch('/api/departments'),
         fetch('/api/schedules'),
       ]);
@@ -96,6 +116,8 @@ export function FacultyView() {
 
   const handleCreate = () => {
     setSelectedFaculty(null);
+    // For dept_head, pre-select their department
+    const preselectedDept = isDeptHead && deptHeadDepartmentId ? deptHeadDepartmentId : '';
     setFormData({
       name: '',
       email: '',
@@ -103,7 +125,7 @@ export function FacultyView() {
       role: 'faculty',
       contractType: 'full-time',
       maxUnits: 24,
-      departmentId: '',
+      departmentId: preselectedDept,
       specialization: [],
     });
     setFormErrors({});
@@ -314,6 +336,9 @@ export function FacultyView() {
     );
   }
 
+  // Determine if department select should be locked (dept_head creating new faculty)
+  const isDepartmentLocked = isDeptHead && !selectedFaculty;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -324,7 +349,10 @@ export function FacultyView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Faculty Management</h1>
-          <p className="text-muted-foreground">Manage faculty members and teaching loads</p>
+          <p className="text-muted-foreground">
+            Manage faculty members and teaching loads
+            {isDeptHead && ' (Your department only)'}
+          </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
@@ -475,20 +503,35 @@ export function FacultyView() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
+                <Label htmlFor="department" className="flex items-center gap-1">
+                  Department *
+                  {isDepartmentLocked && (
+                    <Lock className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </Label>
                 <Select
                   value={formData.departmentId as string || ''}
                   onValueChange={(value) => setFormData({ ...formData, departmentId: value })}
+                  disabled={isDepartmentLocked}
                 >
                   <SelectTrigger className={formErrors.departmentId ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((dept) => (
+                    {/* For dept_head creating new faculty, only show their department */}
+                    {(isDepartmentLocked
+                      ? departments.filter((d) => d.id === deptHeadDepartmentId)
+                      : departments
+                    ).map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isDepartmentLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Locked to your department
+                  </p>
+                )}
                 {formErrors.departmentId && <p className="text-xs text-destructive">{formErrors.departmentId}</p>}
               </div>
               <div className="space-y-2">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-session';
+import { getDepartmentFilter } from '@/lib/dept-auth';
 import { db } from '@/lib/db';
 
 // GET /api/sections
@@ -11,7 +12,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const departmentId = searchParams.get('departmentId');
+    const queryDepartmentId = searchParams.get('departmentId');
+
+    // Enforce department head isolation: dept_head can only see their own department
+    // Admin sees everything (with optional departmentId filter from query params)
+    const forcedDepartmentId = getDepartmentFilter(session as Parameters<typeof getDepartmentFilter>[0]);
+    const departmentId = forcedDepartmentId || queryDepartmentId;
 
     const sections = await db.section.findMany({
       where: departmentId ? { departmentId } : undefined,

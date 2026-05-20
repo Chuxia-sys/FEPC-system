@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-session';
+import { validateDocumentOwnership } from '@/lib/dept-auth';
 import { db } from '@/lib/db';
 
 export async function PUT(
@@ -20,6 +21,36 @@ export async function PUT(
     }
 
     const { id } = await params;
+
+    // For dept_head: verify the conflict belongs to their department
+    if (isDeptHead) {
+      const conflict = await db.conflict.findUnique({
+        where: { id },
+        select: { scheduleId1: true },
+      });
+
+      if (!conflict) {
+        return NextResponse.json({ error: 'Conflict not found' }, { status: 404 });
+      }
+
+      // Fetch the schedule's section to get the departmentId
+      const schedule = conflict.scheduleId1
+        ? await db.schedule.findUnique({
+            where: { id: conflict.scheduleId1 },
+            select: { section: { select: { departmentId: true } } },
+          })
+        : null;
+
+      const scheduleDepartmentId = schedule?.section?.departmentId ?? null;
+
+      const ownership = validateDocumentOwnership(session, scheduleDepartmentId);
+      if (!ownership.allowed) {
+        return NextResponse.json(
+          { error: ownership.error },
+          { status: ownership.status }
+        );
+      }
+    }
 
     const conflict = await db.conflict.update({
       where: { id },
@@ -65,6 +96,37 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    // For dept_head: verify the conflict belongs to their department
+    if (isDeptHead) {
+      const conflict = await db.conflict.findUnique({
+        where: { id },
+        select: { scheduleId1: true },
+      });
+
+      if (!conflict) {
+        return NextResponse.json({ error: 'Conflict not found' }, { status: 404 });
+      }
+
+      // Fetch the schedule's section to get the departmentId
+      const schedule = conflict.scheduleId1
+        ? await db.schedule.findUnique({
+            where: { id: conflict.scheduleId1 },
+            select: { section: { select: { departmentId: true } } },
+          })
+        : null;
+
+      const scheduleDepartmentId = schedule?.section?.departmentId ?? null;
+
+      const ownership = validateDocumentOwnership(session, scheduleDepartmentId);
+      if (!ownership.allowed) {
+        return NextResponse.json(
+          { error: ownership.error },
+          { status: ownership.status }
+        );
+      }
+    }
+
     await db.conflict.delete({ where: { id } });
 
     await db.auditLog.create({

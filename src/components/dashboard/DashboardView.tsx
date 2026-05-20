@@ -60,7 +60,7 @@ type PreGenerationWarning = {
 
 export function DashboardView() {
   const { data: session } = useSession();
-  const { triggerRefresh } = useAppStore();
+  const { triggerRefresh, initializeDepartmentFromSession } = useAppStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentSchedules, setRecentSchedules] = useState<Schedule[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
@@ -75,6 +75,22 @@ export function DashboardView() {
   const prevScheduleCountRef = useRef<number>(0);
 
   const isFaculty = session?.user?.role === 'faculty';
+  const isDeptHead = session?.user?.role === 'department_head';
+  const isAdmin = session?.user?.role === 'admin';
+
+  // Initialize department from session for dept_head isolation
+  useEffect(() => {
+    if (session?.user) {
+      initializeDepartmentFromSession(session.user.role, session.user.departmentId);
+    }
+  }, [session?.user, initializeDepartmentFromSession]);
+
+  // Build department query param for dept_head users
+  const getDeptParam = useCallback(() => {
+    return isDeptHead && session?.user?.departmentId 
+      ? `?departmentId=${session.user.departmentId}` 
+      : '';
+  }, [isDeptHead, session?.user?.departmentId]);
 
   const pollForCompletion = useCallback(() => {
     // Stop polling after 2 minutes
@@ -88,7 +104,7 @@ export function DashboardView() {
       return;
     }
 
-    fetch('/api/stats')
+    fetch(`/api/stats${getDeptParam()}`)
       .then(res => res.json())
       .then(statsData => {
         const currentCount = statsData?.totalSchedules ?? 0;
@@ -109,7 +125,7 @@ export function DashboardView() {
       .catch(() => {
         // Silently ignore poll errors — the notification system will handle completion
       });
-  }, []);
+  }, [getDeptParam, triggerRefresh]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -123,9 +139,10 @@ export function DashboardView() {
 
   const fetchDashboardData = async () => {
     try {
+      const deptParam = getDeptParam();
       const [statsRes, schedulesRes, conflictsRes] = await Promise.all([
-        fetch('/api/stats'),
-        fetch('/api/schedules'),
+        fetch(`/api/stats${deptParam}`),
+        fetch(`/api/schedules${deptParam}`),
         fetch('/api/conflicts'),
       ]);
 
@@ -276,9 +293,6 @@ export function DashboardView() {
       </div>
     );
   }
-
-  const isAdmin = session?.user?.role === 'admin';
-  const isDeptHead = session?.user?.role === 'department_head';
 
   // Faculty-specific dashboard
   if (isFaculty) {
@@ -433,6 +447,11 @@ export function DashboardView() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             Welcome back, {session?.user?.name}
+            {isDeptHead && session?.user?.departmentId && (
+              <Badge variant="secondary" className="ml-2">
+                {session.user.departmentId}
+              </Badge>
+            )}
           </p>
         </div>
         {isAdmin && (

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useAppStore } from '@/store';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from './DataTable';
 import { Button } from '@/components/ui/button';
@@ -32,12 +34,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, MoreHorizontal, Pencil, Trash2, BookOpen } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, BookOpen, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Subject, Department } from '@/types';
 import { safeJson } from '@/lib/utils';
 
 export function SubjectsView() {
+  const { data: session } = useSession();
+  const { initializeDepartmentFromSession } = useAppStore();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,14 +52,29 @@ export function SubjectsView() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  const isDeptHead = session?.user?.role === 'department_head';
+  const deptHeadDepartmentId = isDeptHead ? session?.user?.departmentId : null;
+
+  // Initialize department from session for dept_head isolation
+  useEffect(() => {
+    if (session?.user) {
+      initializeDepartmentFromSession(session.user.role, session.user.departmentId);
+    }
+  }, [session?.user, initializeDepartmentFromSession]);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
+      // For dept_head, pass departmentId query param to filter to their department
+      const subjectsUrl = isDeptHead && deptHeadDepartmentId
+        ? `/api/subjects?departmentId=${deptHeadDepartmentId}`
+        : '/api/subjects';
+
       const [subjectsRes, deptsRes] = await Promise.all([
-        fetch('/api/subjects'),
+        fetch(subjectsUrl),
         fetch('/api/departments'),
       ]);
 
@@ -74,12 +93,14 @@ export function SubjectsView() {
 
   const handleCreate = () => {
     setSelectedSubject(null);
+    // For dept_head, pre-select their department
+    const preselectedDept = isDeptHead && deptHeadDepartmentId ? deptHeadDepartmentId : '';
     setFormData({
       subjectCode: '',
       subjectName: '',
       description: '',
       units: 3,
-      departmentId: '',
+      departmentId: preselectedDept,
       requiredSpecialization: [],
     });
     setFormErrors({});
@@ -175,6 +196,9 @@ export function SubjectsView() {
     }
   };
 
+  // Determine if department select should be locked (dept_head creating new subject)
+  const isDepartmentLocked = isDeptHead && !selectedSubject;
+
   const columns: ColumnDef<Subject>[] = [
     {
       accessorKey: 'subjectCode',
@@ -251,7 +275,10 @@ export function SubjectsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Subjects</h1>
-          <p className="text-muted-foreground">Manage course subjects and offerings</p>
+          <p className="text-muted-foreground">
+            Manage course subjects and offerings
+            {isDeptHead && ' (Your department only)'}
+          </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
@@ -311,21 +338,36 @@ export function SubjectsView() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Department *</Label>
+              <Label className="text-right flex items-center gap-1">
+                Department *
+                {isDepartmentLocked && (
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                )}
+              </Label>
               <div className="col-span-3 space-y-1">
                 <Select
                   value={formData.departmentId as string || ''}
                   onValueChange={(value) => setFormData({ ...formData, departmentId: value })}
+                  disabled={isDepartmentLocked}
                 >
                   <SelectTrigger className={formErrors.departmentId ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((dept) => (
+                    {/* For dept_head creating new subject, only show their department */}
+                    {(isDepartmentLocked
+                      ? departments.filter((d) => d.id === deptHeadDepartmentId)
+                      : departments
+                    ).map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isDepartmentLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Locked to your department
+                  </p>
+                )}
                 {formErrors.departmentId && <p className="text-xs text-destructive">{formErrors.departmentId}</p>}
               </div>
             </div>

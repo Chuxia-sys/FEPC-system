@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useAppStore } from '@/store';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Activity,
+  Lock,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -81,10 +83,45 @@ const TCU_GRADIENT = {
 
 export function ReportsView() {
   const { data: session } = useSession();
+  const { initializeDepartmentFromSession } = useAppStore();
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [reportType, setReportType] = useState<'overview' | 'faculty' | 'schedules' | 'rooms'>('overview');
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+
+  const isDeptHead = session?.user?.role === 'department_head';
+  const deptHeadDepartmentId = isDeptHead ? session?.user?.departmentId : null;
+
+  // Initialize department from session for dept_head isolation
+  useEffect(() => {
+    if (session?.user) {
+      initializeDepartmentFromSession(session.user.role, session.user.departmentId);
+    }
+  }, [session?.user, initializeDepartmentFromSession]);
+
+  // For dept_head, force selectedDepartment to their department
+  useEffect(() => {
+    if (isDeptHead && deptHeadDepartmentId) {
+      setSelectedDepartment(deptHeadDepartmentId);
+    }
+  }, [isDeptHead, deptHeadDepartmentId]);
+
+  // Fetch departments for the filter dropdown
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch('/api/departments');
+        const data = await safeJson<Array<{ id: string; name: string }>>(res);
+        if (Array.isArray(data)) {
+          setDepartments(data);
+        }
+      } catch {
+        // Silently fail - department filter is optional
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     fetchStats();
@@ -235,6 +272,11 @@ export function ReportsView() {
     );
   }
 
+  // Find the dept_head's department name for display
+  const deptHeadDeptName = isDeptHead && deptHeadDepartmentId
+    ? departments.find(d => d.id === deptHeadDepartmentId)?.name || 'Your Department'
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -247,6 +289,7 @@ export function ReportsView() {
           <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
           <p className="text-muted-foreground">
             Comprehensive insights into scheduling and faculty utilization
+            {isDeptHead && deptHeadDeptName && ` (${deptHeadDeptName} only)`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -278,6 +321,38 @@ export function ReportsView() {
                   <SelectItem value="rooms">Room Utilization</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium flex items-center gap-1">
+                Department:
+                {isDeptHead && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </span>
+              <Select
+                value={selectedDepartment}
+                onValueChange={(v) => setSelectedDepartment(v)}
+                disabled={isDeptHead}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* For dept_head, only show their department (already selected & locked) */}
+                  {!isDeptHead && (
+                    <SelectItem value="all">All Departments</SelectItem>
+                  )}
+                  {(isDeptHead
+                    ? departments.filter(d => d.id === deptHeadDepartmentId)
+                    : departments
+                  ).map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isDeptHead && (
+                <span className="text-xs text-muted-foreground">
+                  Locked to your department
+                </span>
+              )}
             </div>
           </div>
         </CardContent>

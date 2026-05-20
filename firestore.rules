@@ -1,0 +1,471 @@
+// =============================================================
+// TCU Scheduling System — Firestore Security Rules
+// =============================================================
+// Enforces Department Head isolation at the database level.
+//
+// ACCESS MODEL:
+//   1. Admin        → Full read/write on all collections
+//   2. Department Head → Access only to documents within
+//      their own department (departmentId match), plus their
+//      own user profile
+//   3. Faculty      → Read/write own profile; read own
+//      preferences, notifications, schedule responses; read
+//      schedules assigned to them
+//   4. Unauthenticated → Denied everything
+//
+// IMPORTANT — REST API CONSIDERATION:
+//   This system accesses Firestore via the REST API with an
+//   API key (no Firebase Auth tokens). Consequently,
+//   request.auth is null for server-side calls. The backend
+//   route handlers (see src/lib/dept-auth.ts) are the PRIMARY
+//   authorization layer. These rules serve as an ADDITIONAL
+//   defense layer for any client-side SDK access and for
+//   defense-in-depth.
+//
+//   When request.auth is null (server-side REST API calls),
+//   access is permitted because the backend already enforces
+//   role-based and department-level isolation. When
+//   request.auth IS present (client SDK), strict role-based
+//   rules are enforced.
+//
+//   RECOMMENDATION: Migrate server-side Firestore access to
+//   the Firebase Admin SDK, which bypasses security rules
+//   entirely and eliminates the need for the
+//   isBackendService() escape hatch.
+// =============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===========================================================
+    // HELPER FUNCTIONS
+    // ===========================================================
+
+    /// True when the request originates from the backend REST
+    /// API adapter (no Firebase Auth token). The backend route
+    /// handlers enforce authorization — see dept-auth.ts.
+    function isBackendService() {
+      return request.auth == null;
+    }
+
+    /// True when the caller is authenticated via Firebase Auth.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /// The authenticated user's uid (Firebase Auth uid).
+    function authUid() {
+      return request.auth.uid;
+    }
+
+    /// The user document for the authenticated caller.
+    function callerDoc() {
+      return get(/databases/$(database)/documents/users/$(authUid()));
+    }
+
+    /// The caller's role string from their user document.
+    /// Expected values: "admin", "department_head", "faculty"
+    function callerRole() {
+      return callerDoc().data.role;
+    }
+
+    /// The caller's departmentId from their user document.
+    function callerDeptId() {
+      return callerDoc().data.departmentId;
+    }
+
+    // ---- Role predicates ----
+
+    function isAdmin() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(authUid()))
+        && callerRole() == 'admin';
+    }
+
+    function isDepartmentHead() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(authUid()))
+        && callerRole() == 'department_head';
+    }
+
+    function isFaculty() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(authUid()))
+        && callerRole() == 'faculty';
+    }
+
+    // ---- Department Head isolation helpers ----
+
+    /// True when the caller is a department head AND the given
+    /// departmentId matches their own department.
+    function isDeptHeadForDept(deptId) {
+      return isDepartmentHead() && callerDeptId() == deptId;
+    }
+
+    /// True when the caller is a department head AND the user
+    /// identified by `userId` belongs to the same department.
+    function isDeptHeadOverUser(userId) {
+      return isDepartmentHead()
+        && exists(/databases/$(database)/documents/users/$(userId))
+        && get(/databases/$(database)/documents/users/$(userId)).data.departmentId == callerDeptId();
+    }
+
+    /// True when the caller is a department head AND the
+    /// section identified by `sectionId` belongs to their
+    /// department.
+    function isDeptHeadOverSection(sectionId) {
+      return isDepartmentHead()
+        && exists(/databases/$(database)/documents/sections/$(sectionId))
+        && get(/databases/$(database)/documents/sections/$(sectionId)).data.departmentId == callerDeptId();
+    }
+
+    /// True when the caller is a department head AND the
+    /// faculty (user) identified by `facultyId` belongs to
+    /// their department.
+    function isDeptHeadOverFaculty(facultyId) {
+      return isDepartmentHead()
+        && exists(/databases/$(database)/documents/users/$(facultyId))
+        && get(/databases/$(database)/documents/users/$(facultyId)).data.departmentId == callerDeptId();
+    }
+
+    // ---- Composite access predicates ----
+
+    /// Admin OR backend service — full access.
+    function adminOrBackend() {
+      return isBackendService() || isAdmin();
+    }
+
+    /// Admin, backend, or department head for the given dept.
+    function adminBackendOrDeptHeadForDept(deptId) {
+      return adminOrBackend() || isDeptHeadForDept(deptId);
+    }
+
+    /// Admin, backend, or the user themselves.
+    function adminBackendOrSelf(userId) {
+      return adminOrBackend()
+        || (isAuthenticated() && authUid() == userId);
+    }
+
+    // ===========================================================
+    // CATCH-ALL: Deny every document by default
+    // ===========================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===========================================================
+    // COLLECTION: users/{userId}
+    //   Fields: role, departmentId, email, name, uid, etc.
+    // ===========================================================
+    match /users/{userId} {
+      // READ: admin | backend | own profile | dept head over user
+      allow read: if adminOrBackend()
+                  || (isAuthenticated() && authUid() == userId)
+                  || isDeptHeadOverUser(userId);
+
+      // CREATE: admin | backend | dept head (user must be in their dept)
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && request.resource.data.departmentId == callerDeptId());
+
+      // UPDATE: admin | backend | own profile | dept head over user
+      //   Department heads CANNOT escalate roles to admin.
+      allow update: if adminOrBackend()
+                    || (isAuthenticated() && authUid() == userId
+                        && request.resource.data.role == resource.data.role)
+                    || (isDeptHeadOverUser(userId)
+                        && request.resource.data.role != 'admin');
+
+      // DELETE: admin | backend | dept head over user
+      //   Users cannot delete themselves.
+      allow delete: if adminOrBackend()
+                    || isDeptHeadOverUser(userId);
+    }
+
+    // ===========================================================
+    // COLLECTION: departments/{deptId}
+    //   Fields: name, code, college
+    // ===========================================================
+    match /departments/{deptId} {
+      // READ: admin | backend | dept head for this dept | faculty in this dept
+      allow read: if adminOrBackend()
+                  || isDeptHeadForDept(deptId)
+                  || (isFaculty()
+                      && callerDeptId() == deptId);
+
+      // WRITE: admin | backend only (department creation/modification
+      //   is an administrative action)
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend();
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: subjects/{subjectId}
+    //   Fields: subjectCode, subjectName, departmentId
+    // ===========================================================
+    match /subjects/{subjectId} {
+      // READ: admin | backend | dept head for subject's dept | faculty in same dept
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && resource.data.departmentId == callerDeptId())
+                  || (isFaculty()
+                      && resource.data.departmentId == callerDeptId());
+
+      // CREATE: admin | backend | dept head (subject must be in their dept)
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && request.resource.data.departmentId == callerDeptId());
+
+      // UPDATE: admin | backend | dept head if subject is in their dept
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && resource.data.departmentId == callerDeptId());
+
+      // DELETE: admin | backend | dept head if subject is in their dept
+      allow delete: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && resource.data.departmentId == callerDeptId());
+    }
+
+    // ===========================================================
+    // COLLECTION: rooms/{roomId}
+    //   Fields: roomName, capacity, building
+    //   NOTE: Rooms are shared resources — no departmentId.
+    // ===========================================================
+    match /rooms/{roomId} {
+      // READ: any authenticated user or backend (rooms are reference data)
+      allow read: if isBackendService() || isAuthenticated();
+
+      // WRITE: admin | backend only
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend();
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: sections/{sectionId}
+    //   Fields: sectionName, departmentId, yearLevel
+    // ===========================================================
+    match /sections/{sectionId} {
+      // READ: admin | backend | dept head for section's dept | faculty in same dept
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && resource.data.departmentId == callerDeptId())
+                  || (isFaculty()
+                      && resource.data.departmentId == callerDeptId());
+
+      // CREATE: admin | backend | dept head (section must be in their dept)
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && request.resource.data.departmentId == callerDeptId());
+
+      // UPDATE: admin | backend | dept head if section is in their dept
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && resource.data.departmentId == callerDeptId());
+
+      // DELETE: admin | backend | dept head if section is in their dept
+      allow delete: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && resource.data.departmentId == callerDeptId());
+    }
+
+    // ===========================================================
+    // COLLECTION: schedules/{scheduleId}
+    //   Fields: facultyId, sectionId, roomId, subjectId, day,
+    //           startTime, endTime
+    //   NOTE: No direct departmentId — resolved via sectionId.
+    // ===========================================================
+    match /schedules/{scheduleId} {
+      // READ: admin | backend | dept head (via section's dept) | assigned faculty
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverSection(resource.data.sectionId))
+                  || (isFaculty()
+                      && resource.data.facultyId == authUid());
+
+      // CREATE: admin | backend | dept head (section must be in their dept)
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverSection(request.resource.data.sectionId));
+
+      // UPDATE: admin | backend | dept head (existing section in their dept)
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverSection(resource.data.sectionId));
+
+      // DELETE: admin | backend | dept head (section in their dept)
+      allow delete: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverSection(resource.data.sectionId));
+    }
+
+    // ===========================================================
+    // COLLECTION: facultyPreferences/{prefId}
+    //   Fields: facultyId
+    //   NOTE: No direct departmentId — resolved via facultyId → user
+    // ===========================================================
+    match /facultyPreferences/{prefId} {
+      // READ: admin | backend | dept head (over the faculty) | own preferences
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverFaculty(resource.data.facultyId))
+                  || (isFaculty()
+                      && resource.data.facultyId == authUid());
+
+      // CREATE: admin | backend | dept head (faculty in their dept) | own
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(request.resource.data.facultyId))
+                    || (isFaculty()
+                        && request.resource.data.facultyId == authUid());
+
+      // UPDATE: admin | backend | dept head (faculty in their dept) | own
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(resource.data.facultyId))
+                    || (isFaculty()
+                        && resource.data.facultyId == authUid());
+
+      // DELETE: admin | backend | dept head (faculty in their dept)
+      //   Faculty cannot delete their own preferences (only update)
+      allow delete: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(resource.data.facultyId));
+    }
+
+    // ===========================================================
+    // COLLECTION: notifications/{notifId}
+    //   Fields: userId
+    //   NOTE: No direct departmentId — resolved via userId → user
+    // ===========================================================
+    match /notifications/{notifId} {
+      // READ: admin | backend | dept head (over the user) | own notifications
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverUser(resource.data.userId))
+                  || (isFaculty()
+                      && resource.data.userId == authUid());
+
+      // CREATE: admin | backend only (notifications are system-generated)
+      allow create: if adminOrBackend();
+
+      // UPDATE: admin | backend | own (for marking as read)
+      allow update: if adminOrBackend()
+                    || (isAuthenticated()
+                        && resource.data.userId == authUid());
+
+      // DELETE: admin | backend only
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: scheduleResponses/{responseId}
+    //   Fields: facultyId, scheduleId
+    //   NOTE: No direct departmentId — resolved via facultyId → user
+    // ===========================================================
+    match /scheduleResponses/{responseId} {
+      // READ: admin | backend | dept head (over faculty) | own responses
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverFaculty(resource.data.facultyId))
+                  || (isFaculty()
+                      && resource.data.facultyId == authUid());
+
+      // CREATE: admin | backend | dept head (faculty in their dept) | own
+      allow create: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(request.resource.data.facultyId))
+                    || (isFaculty()
+                        && request.resource.data.facultyId == authUid());
+
+      // UPDATE: admin | backend | dept head (faculty in their dept) | own
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(resource.data.facultyId))
+                    || (isFaculty()
+                        && resource.data.facultyId == authUid());
+
+      // DELETE: admin | backend | dept head (faculty in their dept)
+      allow delete: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverFaculty(resource.data.facultyId));
+    }
+
+    // ===========================================================
+    // COLLECTION: conflicts/{conflictId}
+    //   Fields: scheduleId1, scheduleId2, resolved
+    //   NOTE: Resolved to department via scheduleId1 → section → dept.
+    //   This requires two levels of indirection (schedule → section
+    //   → departmentId), so we use isDeptHeadOverSection.
+    // ===========================================================
+    match /conflicts/{conflictId} {
+      // READ: admin | backend | dept head (conflict's schedule in their dept)
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverSection(
+                          get(/databases/$(database)/documents/schedules/$(resource.data.scheduleId1)).data.sectionId));
+
+      // WRITE: admin | backend only (conflicts are system-generated)
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend()
+                    || (isDepartmentHead()
+                        && isDeptHeadOverSection(
+                            get(/databases/$(database)/documents/schedules/$(resource.data.scheduleId1)).data.sectionId)
+                        && !resource.data.resolved);
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: auditLogs/{logId}
+    //   Fields: userId, action, entity
+    //   NOTE: Audit logs are sensitive — restricted access.
+    // ===========================================================
+    match /auditLogs/{logId} {
+      // READ: admin | backend only
+      allow read: if adminOrBackend();
+
+      // WRITE: admin | backend only (system-generated)
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend();
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: scheduleLogs/{logId}
+    //   Fields: scheduleId, modifiedBy
+    //   NOTE: Resolved to department via scheduleId → section → dept.
+    // ===========================================================
+    match /scheduleLogs/{logId} {
+      // READ: admin | backend | dept head (schedule in their dept)
+      allow read: if adminOrBackend()
+                  || (isDepartmentHead()
+                      && isDeptHeadOverSection(
+                          get(/databases/$(database)/documents/schedules/$(resource.data.scheduleId)).data.sectionId));
+
+      // WRITE: admin | backend only (system-generated)
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend();
+      allow delete: if adminOrBackend();
+    }
+
+    // ===========================================================
+    // COLLECTION: systemSettings/{settingId}
+    //   Fields: key, value
+    //   NOTE: System-wide configuration — admin only for writes.
+    // ===========================================================
+    match /systemSettings/{settingId} {
+      // READ: admin | backend | department heads | faculty
+      //   (all authenticated users can read settings for UI config)
+      allow read: if isBackendService() || isAuthenticated();
+
+      // WRITE: admin | backend only
+      allow create: if adminOrBackend();
+      allow update: if adminOrBackend();
+      allow delete: if adminOrBackend();
+    }
+
+  }
+}

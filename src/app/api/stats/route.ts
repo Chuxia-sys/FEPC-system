@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAuthSession } from '@/lib/auth-session';
+import { getDepartmentFilter, isAdmin, isDeptHead, isFaculty } from '@/lib/dept-auth';
 
 // GET /api/stats
 export async function GET(request: NextRequest) {
@@ -11,37 +12,60 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const departmentId = searchParams.get('departmentId');
+    const departmentIdParam = searchParams.get('departmentId');
     const facultyId = searchParams.get('facultyId');
 
-    // Determine if filtering by faculty (for faculty role)
-    const isFaculty = session?.user?.role === 'faculty';
-    const filterFacultyId = isFaculty ? session.user.id : facultyId;
+    // Determine role-based filtering
+    const userIsFaculty = isFaculty(session as Parameters<typeof isFaculty>[0]);
+    const userIsDeptHead = isDeptHead(session as Parameters<typeof isDeptHead>[0]);
+    const userIsAdmin = isAdmin(session as Parameters<typeof isAdmin>[0]);
+
+    // Faculty can only see their own data
+    const filterFacultyId = userIsFaculty ? session.user.id : facultyId;
+
+    // Department filtering:
+    // - Admin: use URL param if provided, otherwise no filter
+    // - Dept Head: forced to their own department (ignore URL param)
+    // - Faculty: no department filter (they see their own data via facultyId filter)
+    let departmentFilter: string | undefined;
+    if (userIsDeptHead) {
+      // Department heads are restricted to their own department
+      departmentFilter = session.user.departmentId || undefined;
+    } else if (userIsAdmin) {
+      // Admin can optionally filter by department via URL param
+      departmentFilter = departmentIdParam || undefined;
+    }
+    // Faculty: no department filter (they only see their own schedules)
 
     // Get all relevant data
     const [users, schedules, conflicts, rooms, sections, subjects] = await Promise.all([
       db.user.findMany({
         where: {
           role: 'faculty',
-          ...(departmentId && { departmentId }),
+          ...(departmentFilter && { departmentId: departmentFilter }),
           ...(filterFacultyId && { id: filterFacultyId }),
         },
         include: { department: true },
       }),
       db.schedule.findMany({
         where: {
-          ...(departmentId ? { section: { departmentId } } : {}),
+          ...(departmentFilter ? { section: { departmentId: departmentFilter } } : {}),
           ...(filterFacultyId && { facultyId: filterFacultyId }),
         },
         include: { subject: true, faculty: true, room: true, section: true },
       }),
-      db.conflict.findMany({ where: { resolved: false } }),
+      db.conflict.findMany({
+        where: {
+          resolved: false,
+          ...(departmentFilter ? { schedule: { section: { departmentId: departmentFilter } } } : {}),
+        },
+      }),
       db.room.findMany(),
       db.section.findMany({
-        where: departmentId ? { departmentId } : undefined,
+        where: departmentFilter ? { departmentId: departmentFilter } : undefined,
       }),
       db.subject.findMany({
-        where: departmentId ? { departmentId } : undefined,
+        where: departmentFilter ? { departmentId: departmentFilter } : undefined,
       }),
     ]);
 
@@ -138,7 +162,7 @@ export async function GET(request: NextRequest) {
       totalRooms: rooms.length,
       totalSections: sections.length,
       totalSubjects: subjects.length,
-      isFacultyView: isFaculty,
+      isFacultyView: userIsFaculty,
       currentFacultyId: filterFacultyId || null,
     });
   } catch (error) {

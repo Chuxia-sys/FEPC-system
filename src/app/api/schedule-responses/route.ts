@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth-session';
+import { isDeptHead, isAdmin } from '@/lib/dept-auth';
 import { db } from '@/lib/db';
 
-// GET - Get all schedule responses (admin) or user's own responses (faculty)
+// GET - Get all schedule responses (admin) or user's own responses (faculty) or department responses (dept_head)
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -12,12 +13,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const isFaculty = session.user.role === 'faculty';
+    const userIsFaculty = session.user.role === 'faculty';
+    const userIsDeptHead = isDeptHead(session);
+    const userIsAdmin = isAdmin(session);
 
     const where: Record<string, unknown> = {};
     
     // Faculty can only see their own responses
-    if (isFaculty) {
+    if (userIsFaculty) {
       where.facultyId = session.user.id;
     }
     
@@ -54,6 +57,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // For dept_head: filter responses to only those where the schedule's section belongs to their department
+    if (userIsDeptHead && session.user.departmentId) {
+      const filteredResponses = responses.filter(
+        (response) => response.schedule?.section?.departmentId === session.user.departmentId
+      );
+      return NextResponse.json(filteredResponses);
+    }
+
+    // Admin sees all, faculty sees their own (already filtered by where clause)
     return NextResponse.json(responses);
   } catch (error) {
     console.error('Error fetching schedule responses:', error);

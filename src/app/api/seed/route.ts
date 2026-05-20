@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/dept-auth';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 export async function POST() {
   try {
+    // Require admin authentication to re-seed the database
+    const authResult = await requireAdmin();
+    if ('error' in authResult) {
+      return NextResponse.json(
+        { error: authResult.error.error },
+        { status: authResult.error.status }
+      );
+    }
+
     console.log('🌱 Starting database seed...');
 
     // Hash password for all demo accounts
