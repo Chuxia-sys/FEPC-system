@@ -1095,7 +1095,7 @@ export function CalendarView() {
         <CardContent className="py-3">
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <span className="font-medium text-muted-foreground">Status:</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Approved</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Approved</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Generated</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Modified</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Conflict</span>
@@ -1110,7 +1110,7 @@ export function CalendarView() {
           const color = CARD_COLORS[colorIndex];
           const isConflict = selectedSchedule.status === 'conflict';
           const statusIcon = selectedSchedule.status === 'approved'
-            ? <CheckCircle className="h-3 w-3 text-emerald-400" />
+            ? <CheckCircle className="h-3 w-3 text-red-400" />
             : selectedSchedule.status === 'conflict'
               ? <AlertTriangle className="h-3 w-3 text-red-300" />
               : <Clock className="h-3 w-3 text-white/70" />;
@@ -1168,7 +1168,7 @@ export function CalendarView() {
                   </QuickPill>
                   <QuickPill icon={statusIcon} className={cn(
                     isConflict && 'bg-red-500/25 border-red-400/30',
-                    selectedSchedule.status === 'approved' && 'bg-emerald-500/20 border-emerald-400/25',
+                    selectedSchedule.status === 'approved' && 'bg-red-500/20 border-red-400/25',
                     selectedSchedule.status === 'generated' && 'bg-sky-500/20 border-sky-400/25',
                     selectedSchedule.status === 'modified' && 'bg-amber-500/20 border-amber-400/25',
                   )}>
