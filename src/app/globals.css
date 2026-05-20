@@ -249,6 +249,50 @@
     100% { background-position: 200% 0; }
   }
 
+  /* Schedule card hover overlay — uses pseudo-element so it
+     layers ON TOP of the card's existing background instead of
+     replacing it (which caused the red/blank background bug). */
+  .schedule-card-hover {
+    position: relative;
+    transition: all 0.2s ease-in-out;
+  }
+  .schedule-card-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .schedule-card-hover:hover::before {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.10);
+  }
+  .schedule-card-hover:hover {
+    z-index: 20;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    transform: scale(1.018);
+  }
+
+  /* Dark mode — soft white luminance overlay */
+  .dark .schedule-card-hover::before {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .dark .schedule-card-hover:hover::before {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  .dark .schedule-card-hover:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+
   /* Dark mode overrides — ensure no gradients bleed through */
   .dark .bg-crimson-gradient,
   .dark [class*="bg-gradient"] {
