@@ -1,10 +1,15 @@
 // User Types
 export type UserRole = 'admin' | 'department_head' | 'faculty';
 export type ContractType = 'full-time' | 'part-time';
-export type ScheduleStatus = 'generated' | 'approved' | 'modified' | 'conflict';
+export type ScheduleStatus = 'generated' | 'approved' | 'modified' | 'conflict' | 'rescheduled_due_conflict' | 'conflict_unresolved';
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 export type NotificationType = 'info' | 'warning' | 'success' | 'error';
-export type ConflictType = 'faculty_double_booking' | 'room_double_booking' | 'section_overlap';
+export type ConflictType =
+  | 'faculty_double_booking'
+  | 'room_double_booking'
+  | 'section_overlap'
+  | 'capacity_exceeded'
+  | 'equipment_mismatch';
 
 // Entity Interfaces
 export interface User {
@@ -147,6 +152,40 @@ export interface Conflict {
   resolvedBy?: string | null;
   resolvedAt?: Date | null;
   createdAt: Date;
+  // Extended fields for intelligent resolution
+  facultyIds?: string;
+  subjectId?: string;
+  generationId?: string;
+  resolutionStrategy?: string | null;
+  resolutionStatus?: 'pending' | 'auto_resolved' | 'manual_review' | 'escalated' | null;
+}
+
+// Reassignment candidate produced by the conflict resolver
+export interface ReassignmentCandidate {
+  scheduleId: string;
+  newDay: string;
+  newStartTime: string;
+  newEndTime: string;
+  newRoomId: string;
+  originalDay: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  originalRoomId: string;
+  score: number;
+  tier: 1 | 2 | 3;
+  tierLabel: string;
+  conflictReason: string;
+  rescheduleReason: string;
+}
+
+// Result of a conflict resolution attempt
+export interface ConflictResolutionResult {
+  conflictId: string;
+  success: boolean;
+  strategy: 'auto_resolved' | 'manual_review' | 'escalated';
+  candidate?: ReassignmentCandidate;
+  message: string;
+  cascadedResolutions?: ConflictResolutionResult[];
 }
 
 export interface AuditLog {
@@ -295,6 +334,15 @@ export interface UserFormData {
   contractType: ContractType;
   maxUnits: number;
   specialization: string[];
+}
+
+export interface ConflictResolutionFormData {
+  scheduleId: string;
+  newDay: string;
+  newStartTime: string;
+  newEndTime: string;
+  newRoomId: string;
+  reason?: string;
 }
 
 export interface ScheduleFormData {

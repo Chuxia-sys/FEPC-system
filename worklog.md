@@ -298,3 +298,58 @@ Stage Summary:
 - WEBPACK ALIAS intercepts accidental @prisma/client imports → redirects to Firestore adapter
 - Prisma-Firestore Bridge provides compatibility for any code expecting Prisma Client API
 - All Firebase Firestore connections fully functional
+---
+Task ID: 6
+Agent: Main Agent
+Task: Implement Intelligent Conflict Detection & Auto-Rescheduling System
+
+Work Log:
+- Read and analyzed the conflict-detection-rescheduling.md specification (408 lines)
+- Explored existing conflict code: GET /api/conflicts, PUT /api/conflicts/[id], scheduling-algorithm.ts, ConflictView.tsx
+- Identified gaps: only 3 conflict types, no auto-resolution, no alternative generation, no notification on resolution
+- Updated types/index.ts: expanded ConflictType (5 types), ScheduleStatus (added rescheduled_due_conflict, conflict_unresolved), added ReassignmentCandidate and ConflictResolutionResult interfaces
+- Created src/lib/conflict-resolver.ts (~350 lines): Full conflict lifecycle engine
+  - Phase 1: detectConflicts() - detects 5 types (faculty_double_booking, room_double_booking, section_overlap, capacity_exceeded, equipment_mismatch)
+  - Phase 2: generateAlternatives() - 3-tier scoring (Preferred, Available, Last Resort) with 4-factor weighted scoring
+  - Phase 3: resolveConflict() - auto-resolve with cascade prevention, validation, threshold checking
+  - Phase 4: resolveAllConflicts() - batch resolution sorted by severity
+  - Phase 5: manualResolve() - manual reassignment with validation
+  - Phase 6: buildResolutionNotifications() - notification payloads for faculty and admin
+- Created 5 new API endpoints:
+  - POST /api/conflicts/detect - scan for conflicts and deduplicate
+  - POST /api/conflicts/[id]/resolve - auto-resolve single conflict with notifications
+  - POST /api/conflicts/resolve-all - batch resolve (admin only)
+  - GET /api/conflicts/[id]/alternatives - get reassignment candidates
+  - PUT /api/conflicts/[id]/manual-resolve - manual reassignment
+- Rewrote ConflictView.tsx (~400 lines): Full-featured conflict resolution UI
+  - 5 summary cards (Total, Active, Auto-Resolved, Escalated, Resolved)
+  - Detect button for on-demand conflict scanning
+  - Resolve All button for batch resolution
+  - Per-conflict actions: View Alternatives, Auto-Resolve, Manual Reassign
+  - Expandable rows showing schedule pair details and suggested resolution
+  - Alternatives dialog with ranked candidates (score + tier badges)
+  - Manual reassignment dialog with day/time/room selectors
+  - Auto-resolve dialog with current suggestion display
+  - Responsive design (mobile-first)
+  - All new conflict type icons (User, MapPin, Users, Package, Wrench)
+- All audit logging integrated into every API endpoint
+- Notifications sent to affected faculty and admins on resolution
+- Lint: 0 errors (1 pre-existing TanStack Table warning)
+- Server: Running, health check passes, Firestore connected
+
+Stage Summary:
+- Complete intelligent conflict detection & auto-rescheduling system implemented
+- 5 conflict types detected: faculty_double_booking, room_double_booking, section_overlap, capacity_exceeded, equipment_mismatch
+- 3-tier scoring algorithm with configurable weights (Preference 0.40, Time Quality 0.25, Subject Pref 0.20, Load Balance 0.15)
+- Auto-resolve with cascade prevention (max depth 3), score thresholds (0.75 auto, 0.50 escalate)
+- 5 new API endpoints + enhanced ConflictView frontend
+- Full notification integration: faculty schedule change alerts + admin reports
+- Key files created/modified:
+  - src/lib/conflict-resolver.ts (NEW - core engine)
+  - src/types/index.ts (expanded types)
+  - src/app/api/conflicts/detect/route.ts (NEW)
+  - src/app/api/conflicts/[id]/resolve/route.ts (NEW)
+  - src/app/api/conflicts/resolve-all/route.ts (NEW)
+  - src/app/api/conflicts/[id]/alternatives/route.ts (NEW)
+  - src/app/api/conflicts/[id]/manual-resolve/route.ts (NEW)
+  - src/components/tables/ConflictView.tsx (complete rewrite)
