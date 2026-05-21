@@ -425,12 +425,12 @@ export function LoginPage() {
                             size="sm"
                             className="w-full justify-start text-xs"
                             onClick={() => {
-                              setEmail('head.cs@fepc.edu.ph');
+                              setEmail('head.cs@tcu.edu.ph');
                               setPassword('password123');
                             }}
                           >
                             <span className="font-medium mr-2">Dept Head:</span>
-                            head.cs@fepc.edu.ph
+                            head.cs@tcu.edu.ph
                           </Button>
                           <Button
                             type="button"
@@ -438,12 +438,12 @@ export function LoginPage() {
                             size="sm"
                             className="w-full justify-start text-xs"
                             onClick={() => {
-                              setEmail('faculty1@fepc.edu.ph');
+                              setEmail('faculty1@tcu.edu.ph');
                               setPassword('password123');
                             }}
                           >
                             <span className="font-medium mr-2">Faculty:</span>
-                            faculty1@fepc.edu.ph
+                            faculty1@tcu.edu.ph
                           </Button>
                         </div>
                       </div>

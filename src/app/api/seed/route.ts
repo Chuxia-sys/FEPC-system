@@ -158,7 +158,7 @@ export async function POST() {
     const deptHead = await upsertUser({
       uid: 'head-cs-001',
       name: 'Dr. Maria Santos',
-      email: 'head.cs@fepc.edu.ph',
+      email: 'head.cs@tcu.edu.ph',
       password: hashedPassword,
       role: 'department_head',
       departmentId: csDept.id,
@@ -170,7 +170,7 @@ export async function POST() {
     const faculty1 = await upsertUser({
       uid: 'faculty-001',
       name: 'Prof. Juan Cruz',
-      email: 'faculty1@fepc.edu.ph',
+      email: 'faculty1@tcu.edu.ph',
       password: hashedPassword,
       role: 'faculty',
       departmentId: csDept.id,
@@ -181,7 +181,7 @@ export async function POST() {
     const faculty2 = await upsertUser({
       uid: 'faculty-002',
       name: 'Prof. Ana Reyes',
-      email: 'faculty2@fepc.edu.ph',
+      email: 'faculty2@tcu.edu.ph',
       password: hashedPassword,
       role: 'faculty',
       departmentId: csDept.id,
@@ -192,7 +192,7 @@ export async function POST() {
     const faculty3 = await upsertUser({
       uid: 'faculty-003',
       name: 'Prof. Carlos Mendoza',
-      email: 'faculty3@fepc.edu.ph',
+      email: 'faculty3@tcu.edu.ph',
       password: hashedPassword,
       role: 'faculty',
       departmentId: csDept.id,
@@ -437,8 +437,8 @@ export async function POST() {
         sections: sections.length,
         demoCredentials: {
           admin: 'admin@tcu.edu.ph',
-          deptHead: 'head.cs@fepc.edu.ph',
-          faculty: 'faculty1@fepc.edu.ph',
+          deptHead: 'head.cs@tcu.edu.ph',
+          faculty: 'faculty1@tcu.edu.ph',
           password: 'password123',
         },
       },

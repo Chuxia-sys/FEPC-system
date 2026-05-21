@@ -22,5 +22,5 @@ export const firebaseConfig = {
 // Server-side Firestore REST API configuration
 export const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'for-commission';
 export const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || firebaseConfig.apiKey;
-export const FIREBASE_SERVICE_EMAIL = process.env.FIREBASE_SERVICE_EMAIL || 'fepc-admin@for-commission.firebaseapp.com';
-export const FIREBASE_SERVICE_PASSWORD = process.env.FIREBASE_SERVICE_PASSWORD || 'fepc-admin-2024';
+export const FIREBASE_SERVICE_EMAIL = process.env.FIREBASE_SERVICE_EMAIL || 'tcu-admin@for-commission.firebaseapp.com';
+export const FIREBASE_SERVICE_PASSWORD = process.env.FIREBASE_SERVICE_PASSWORD || 'tcu-admin-2024';
