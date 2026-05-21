@@ -1,31 +1,29 @@
+# Exported from Render on 2026-05-21T11:16:28Z
+version: "1"
 services:
-  - type: web
-    name: tcu-scheduler
-    env: node
-    region: oregon
-    plan: free
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        value: file:/dev/null
-      - key: NEXT_PUBLIC_FIREBASE_API_KEY
-        sync: false
-      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-        sync: false
-      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        sync: false
-      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        sync: false
-      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-        sync: false
-      - key: NEXT_PUBLIC_FIREBASE_APP_ID
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
+- type: web
+  name: tcu-scheduler
+  runtime: node
+  repo: https://github.com/Chuxia-sys/TCU-System
+  plan: free
+  envVars:
+  - key: NEXT_PUBLIC_FIREBASE_APP_ID
+    sync: false
+  - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    sync: false
+  - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    sync: false
+  - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    sync: false
+  - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    sync: false
+  - key: NEXT_PUBLIC_FIREBASE_API_KEY
+    sync: false
+  - key: DATABASE_URL
+    sync: false
+  - key: NODE_ENV
+    sync: false
+  region: oregon
+  buildCommand: npm ci && npm run build
+  startCommand: npm start
+  autoDeployTrigger: commit
