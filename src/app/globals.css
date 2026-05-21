@@ -139,6 +139,36 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  /* Hide scrollbars globally while keeping scrolling functional */
+  
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  html, body, * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  ::-webkit-scrollbar {
+    display: none; /* Hide scrollbar */
+  }
+  
+  ::-webkit-scrollbar-track {
+    display: none;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    display: none;
+  }
+  
+  ::-webkit-scrollbar-corner {
+    display: none;
+  }
+  
+  /* Ensure overflow elements scroll without showing scrollbar */
+  html, body {
+    overflow: auto;
+  }
+  
   /* Premium heading typography */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-poppins), var(--font-inter), sans-serif;
