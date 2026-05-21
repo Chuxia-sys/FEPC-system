@@ -22,6 +22,15 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { MoreHorizontal } from 'lucide-react';
 
 interface NavItem {
   id: ViewMode;
@@ -61,7 +70,7 @@ export function MobileBottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-card/95 backdrop-blur-lg supports-[backdrop-filter]:bg-card/80 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-card/95 backdrop-blur-lg dark:bg-[#111827]/95 dark:border-[#1E293B] supports-[backdrop-filter]:bg-card/80 safe-area-inset-bottom">
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex items-center justify-around px-2 py-2 gap-1">
           {filteredNavItems.slice(0, 5).map((item) => {
@@ -74,8 +83,8 @@ export function MobileBottomNav() {
                 className={cn(
                   'flex flex-col items-center justify-center min-w-[56px] h-14 px-2 rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    ? 'bg-red-500/10 text-red-500 dark:bg-[#EF4444]/10 dark:text-[#EF4444]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 dark:hover:bg-white/[0.04]'
                 )}
               >
                 <Icon className={cn(
@@ -89,13 +98,13 @@ export function MobileBottomNav() {
                   {item.label}
                 </span>
                 {isActive && (
-                  <span className="absolute -bottom-0.5 h-1 w-8 rounded-full bg-primary" />
+                  <span className="absolute -bottom-0.5 h-1 w-8 rounded-full bg-red-500 dark:bg-[#EF4444]" />
                 )}
               </button>
             );
           })}
           
-          {/* More button - shows remaining items in a dropdown */}
+          {/* More button */}
           {filteredNavItems.length > 5 && (
             <MoreNavItems 
               items={filteredNavItems.slice(5)} 
@@ -109,16 +118,6 @@ export function MobileBottomNav() {
     </nav>
   );
 }
-
-import { useState } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { MoreHorizontal } from 'lucide-react';
 
 function MoreNavItems({ 
   items, 
@@ -145,8 +144,8 @@ function MoreNavItems({
           className={cn(
             'flex flex-col items-center justify-center min-w-[56px] h-14 px-2 rounded-xl transition-all duration-200',
             hasActiveItem
-              ? 'bg-primary/15 text-primary'
-              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+              ? 'bg-red-500/10 text-red-500 dark:bg-[#EF4444]/10 dark:text-[#EF4444]'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 dark:hover:bg-white/[0.04]'
           )}
         >
           <MoreHorizontal className={cn(
@@ -161,9 +160,9 @@ function MoreNavItems({
           </span>
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="h-auto rounded-t-2xl">
+      <SheetContent side="bottom" className="h-auto rounded-t-2xl dark:bg-[#1E293B] dark:border-[#334155]">
         <SheetHeader className="pb-4">
-          <SheetTitle className="text-center">More Options</SheetTitle>
+          <SheetTitle className="text-center dark:text-[#F8FAFC]">More Options</SheetTitle>
         </SheetHeader>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 pb-6">
           {items.map((item) => {
@@ -176,8 +175,8 @@ function MoreNavItems({
                 className={cn(
                   'flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    ? 'bg-red-500/10 text-red-500 dark:bg-[#EF4444]/10 dark:text-[#EF4444]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 dark:hover:bg-white/[0.04]'
                 )}
               >
                 <Icon className="h-6 w-6 mb-2" />

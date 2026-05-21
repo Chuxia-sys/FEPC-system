@@ -20,14 +20,14 @@ export function AppShell({ children }: AppShellProps) {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-screen items-center justify-center bg-background dark:bg-[#0F172A]">
+        <Loader2 className="h-8 w-8 animate-spin text-red-500 dark:text-[#EF4444]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-[#0F172A]">
       {/* Notification Provider for real-time toast notifications */}
       <NotificationProvider />
       
@@ -40,7 +40,7 @@ export function AppShell({ children }: AppShellProps) {
           'flex-1 flex flex-col transition-all duration-300 ease-in-out',
           // Desktop: apply margin for sidebar
           'md:transition-all',
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-56',
+          sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[260px]',
           // Mobile: no margin, full width
           'ml-0'
         )}
@@ -49,7 +49,7 @@ export function AppShell({ children }: AppShellProps) {
         <Header />
         
         {/* Main Content with bottom padding for mobile nav */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 pb-24 md:pb-6">
+        <main className="flex-1 p-4 sm:p-5 lg:p-8 pb-24 md:pb-8">
           {children}
         </main>
 

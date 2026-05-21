@@ -38,6 +38,7 @@ import {
   AlertCircle,
   Info,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -93,7 +94,6 @@ export function DashboardView() {
   }, [isDeptHead, session?.user?.departmentId]);
 
   const pollForCompletion = useCallback(() => {
-    // Stop polling after 2 minutes
     if (Date.now() - pollStartRef.current > 120_000) {
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
@@ -108,10 +108,7 @@ export function DashboardView() {
       .then(res => res.json())
       .then(statsData => {
         const currentCount = statsData?.totalSchedules ?? 0;
-
-        // If schedules have appeared and count changed from what we saw before starting
         if (currentCount > 0 && currentCount !== prevScheduleCountRef.current) {
-          // Generation appears complete — stop polling and refresh
           if (pollTimerRef.current) {
             clearInterval(pollTimerRef.current);
             pollTimerRef.current = null;
@@ -122,15 +119,12 @@ export function DashboardView() {
           toast.success(`Schedule generation complete! ${currentCount} schedules created.`);
         }
       })
-      .catch(() => {
-        // Silently ignore poll errors — the notification system will handle completion
-      });
+      .catch(() => {});
   }, [getDeptParam, triggerRefresh]);
 
   useEffect(() => {
     fetchDashboardData();
     return () => {
-      // Cleanup polling on unmount
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
       }
@@ -151,13 +145,11 @@ export function DashboardView() {
       const conflictsData = await safeJson(conflictsRes);
 
       setStats(statsData);
-      // Ensure we always set arrays (APIs might return error objects)
       setRecentSchedules(Array.isArray(schedulesData) ? schedulesData.slice(0, 5) : []);
       setConflicts(Array.isArray(conflictsData?.conflicts) ? conflictsData.conflicts.slice(0, 5) : []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
-      // Set default values on error
       setStats(null);
       setRecentSchedules([]);
       setConflicts([]);
@@ -167,13 +159,11 @@ export function DashboardView() {
   };
 
   const handleGenerateSchedules = () => {
-    // Show confirmation dialog first
     setShowConfirmDialog(true);
   };
 
   const confirmGeneration = async () => {
     setShowConfirmDialog(false);
-    // Then check for potential conflicts
     try {
       const checkRes = await fetch('/api/preferences/check-conflicts');
       const checkData = await safeJson<{ conflicts?: Array<{ severity: string }> }>(checkRes);
@@ -181,16 +171,13 @@ export function DashboardView() {
       const warnings = checkData?.conflicts?.filter((c) => c.severity === 'warning') || [];
       
       if (warnings.length > 0) {
-        // Show warning dialog before proceeding
         setPreGenerationWarnings(warnings);
         setShowWarningDialog(true);
         return;
       }
       
-      // No warnings, proceed directly
       await executeGeneration();
     } catch {
-      // If check fails, proceed anyway
       await executeGeneration();
     }
   };
@@ -199,7 +186,6 @@ export function DashboardView() {
     setShowWarningDialog(false);
     setGenerating(true);
     try {
-      // Pass detected conflicts to the generate API so they can be saved
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,7 +195,6 @@ export function DashboardView() {
         }),
       });
 
-      // Read JSON body even on error responses so we can show the actual error message
       let data: {
         success?: boolean;
         generating?: boolean;
@@ -226,51 +211,32 @@ export function DashboardView() {
       if (ct.includes('application/json')) {
         try {
           data = await res.json();
-        } catch {
-          // JSON parse failed
-        }
+        } catch {}
       }
       
       if (data?.success && data?.generating) {
-        // === ASYNC GENERATION: the server is working in the background ===
         setGenerating(false);
         setBgGenerating(true);
         toast.success(data.message || 'Schedule generation started. You\'ll be notified when it\'s complete.', { duration: 6000 });
-
-        // Record the current schedule count so we can detect when new ones appear
         prevScheduleCountRef.current = stats?.totalSchedules ?? 0;
         pollStartRef.current = Date.now();
-
-        // Clear any existing poll timer
         if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
         }
-
-        // Start polling /api/stats every 5 seconds to detect completion
         pollTimerRef.current = setInterval(pollForCompletion, 5000);
-
       } else if (data?.success) {
-        // Legacy sync response (shouldn't happen anymore, but kept for safety)
         if (data.savedConflicts && data.savedConflicts > 0) {
-          toast.success(
-            `Generated ${data.generated} schedules. ${data.savedConflicts} conflict(s) recorded for review.`,
-            { duration: 6000 }
-          );
+          toast.success(`Generated ${data.generated} schedules. ${data.savedConflicts} conflict(s) recorded for review.`, { duration: 6000 });
         } else if (data.preGenerationWarnings && data.preGenerationWarnings.length > 0) {
-          toast.info(
-            `Generated ${data.generated} schedules. ${data.preGenerationWarnings.length} preference conflicts were detected but did not block generation.`,
-            { duration: 6000 }
-          );
+          toast.info(`Generated ${data.generated} schedules. ${data.preGenerationWarnings.length} preference conflicts were detected but did not block generation.`, { duration: 6000 });
         } else {
           toast.success(data.message || 'Schedules generated successfully');
         }
         fetchDashboardData();
         triggerRefresh();
       } else {
-        // Show the actual error from the server, with details if available
         const errorMsg = data?.error || 'Failed to generate schedules';
         toast.error(errorMsg, { duration: 6000 });
-        
         if (data?.details) {
           console.error('Generation details:', data.details);
         }
@@ -289,31 +255,35 @@ export function DashboardView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Activity className="h-8 w-8 animate-spin text-primary" />
+        <Activity className="h-8 w-8 animate-spin text-red-500 dark:text-[#EF4444]" />
       </div>
     );
   }
 
-  // Faculty-specific dashboard
+  // ── Faculty Dashboard ──
   if (isFaculty) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
+      <div className="space-y-8">
+        {/* Premium Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="space-y-2"
         >
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Dashboard</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Welcome back, {session?.user?.name}
-            </p>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-red-500 dark:text-[#EF4444]" />
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight dark:text-[#F8FAFC]">
+              My Dashboard
+            </h1>
           </div>
+          <p className="text-base sm:text-lg text-muted-foreground dark:text-[#94A3B8]">
+            Welcome back, {session?.user?.name} 👋
+          </p>
         </motion.div>
 
-        {/* Faculty Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Faculty Stats Cards — 2x2 grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           <StatsCard
             title="My Schedules"
             value={stats?.totalSchedules || 0}
@@ -341,8 +311,8 @@ export function DashboardView() {
           />
         </div>
 
-        {/* My Schedule Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <SchedulesChart
             data={stats?.schedulesByDay || []}
             title="My Schedule by Day"
@@ -358,112 +328,149 @@ export function DashboardView() {
         </div>
 
         {/* My Upcoming Classes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              My Class Schedule
-            </CardTitle>
-            <CardDescription>Your upcoming classes for the week</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-80">
-              {recentSchedules.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="rounded-full bg-muted p-4 mb-4">
-                    <Calendar className="h-8 w-8 text-muted-foreground" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Card
+            className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow"
+            style={{ borderRadius: '20px' }}
+          >
+            <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+            <div className="relative">
+              <CardHeader className="px-5 pt-5">
+                <CardTitle className="flex items-center gap-2 dark:text-[#F8FAFC]">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-red-500/10 dark:bg-[#EF4444]/10">
+                    <Clock className="h-4 w-4 text-red-500 dark:text-[#EF4444]" />
                   </div>
-                  <p className="font-medium">No schedules assigned</p>
-                  <p className="text-sm text-muted-foreground">
-                    You have not been assigned any classes yet
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentSchedules.map((schedule, index) => (
-                    <div key={schedule.id}>
-                      {index > 0 && <Separator className="mb-4" />}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <BookOpenCheck className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{schedule.subject?.subjectName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {schedule.section?.sectionName} • {schedule.room?.roomName}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{schedule.day}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {schedule.startTime} - {schedule.endTime}
-                          </p>
-                        </div>
+                  My Class Schedule
+                </CardTitle>
+                <CardDescription className="dark:text-[#64748B]">Your upcoming classes for the week</CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <ScrollArea className="h-80 premium-scrollbar">
+                  {recentSchedules.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="rounded-2xl bg-muted/50 dark:bg-[#334155]/30 p-5 mb-4">
+                        <Calendar className="h-8 w-8 text-muted-foreground dark:text-[#64748B]" />
                       </div>
+                      <p className="font-semibold dark:text-[#F8FAFC]">No schedules assigned</p>
+                      <p className="text-sm text-muted-foreground dark:text-[#64748B]">
+                        You have not been assigned any classes yet
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* My Teaching Load */}
-        <Card>
-          <CardHeader>
-            <CardTitle>My Teaching Load</CardTitle>
-            <CardDescription>Your current teaching load vs maximum capacity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">My Utilization</span>
-                <span className="font-medium">{stats?.facultyUtilizationAvg || 0}%</span>
-              </div>
-              <Progress value={stats?.facultyUtilizationAvg || 0} className="h-2" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Current: {stats?.facultyUtilization?.[0]?.assigned || 0} units</span>
-                <span>Max: {stats?.facultyUtilization?.[0]?.max || 24} units</span>
-              </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentSchedules.map((schedule, index) => (
+                        <div key={schedule.id}>
+                          {index > 0 && <Separator className="mb-3 dark:bg-[#334155]/50" />}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 dark:bg-[#EF4444]/10">
+                                <BookOpenCheck className="h-5 w-5 text-red-500 dark:text-[#EF4444]" />
+                              </div>
+                              <div>
+                                <p className="font-medium dark:text-[#F8FAFC]">{schedule.subject?.subjectName}</p>
+                                <p className="text-sm text-muted-foreground dark:text-[#64748B]">
+                                  {schedule.section?.sectionName} • {schedule.room?.roomName}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium dark:text-[#F8FAFC]">{schedule.day}</p>
+                              <p className="text-xs text-muted-foreground dark:text-[#64748B]">
+                                {schedule.startTime} - {schedule.endTime}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
+
+        {/* Teaching Load */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <Card
+            className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow"
+            style={{ borderRadius: '20px' }}
+          >
+            <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+            <div className="relative">
+              <CardHeader className="px-5 pt-5">
+                <CardTitle className="dark:text-[#F8FAFC]">My Teaching Load</CardTitle>
+                <CardDescription className="dark:text-[#64748B]">Your current teaching load vs maximum capacity</CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground dark:text-[#94A3B8]">My Utilization</span>
+                    <span className="font-semibold dark:text-[#F8FAFC]">{stats?.facultyUtilizationAvg || 0}%</span>
+                  </div>
+                  <Progress value={stats?.facultyUtilizationAvg || 0} className="h-2.5 dark:bg-[#334155]" />
+                  <div className="flex justify-between text-xs text-muted-foreground dark:text-[#64748B]">
+                    <span>Current: {stats?.facultyUtilization?.[0]?.assigned || 0} units</span>
+                    <span>Max: {stats?.facultyUtilization?.[0]?.max || 24} units</span>
+                  </div>
+                </div>
+              </CardContent>
+            </div>
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
-  // Admin/Dept Head Dashboard (original view)
+  // ── Admin/Dept Head Dashboard ──
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
+      {/* Premium Welcome Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
       >
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-red-500 dark:text-[#EF4444]" />
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight dark:text-[#F8FAFC]">
+              Dashboard
+            </h1>
+          </div>
+          <p className="text-base sm:text-lg text-muted-foreground dark:text-[#94A3B8]">
             Welcome back, {session?.user?.name}
             {isDeptHead && session?.user?.departmentId && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-2 dark:bg-[#334155] dark:text-[#CBD5E1]">
                 {session.user.departmentId}
               </Badge>
             )}
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={handleGenerateSchedules} disabled={generating || bgGenerating} size="lg" className="w-full sm:w-auto">
+          <Button
+            onClick={handleGenerateSchedules}
+            disabled={generating || bgGenerating}
+            size="lg"
+            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 dark:bg-[#EF4444] dark:hover:bg-[#DC2626] text-white shadow-lg shadow-red-500/20 dark:shadow-[#EF4444]/20 transition-all duration-200 hover:-translate-y-0.5 rounded-xl"
+          >
             <Zap className={`mr-2 h-4 w-4 ${bgGenerating ? 'animate-pulse' : ''}`} />
             {generating ? 'Starting...' : bgGenerating ? 'Generating in background...' : 'Generate Schedules'}
           </Button>
         )}
       </motion.div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Primary Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <StatsCard
           title="Total Faculty"
           value={stats?.totalFaculty || 0}
@@ -494,7 +501,7 @@ export function DashboardView() {
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <StatsCard
           title="Departments"
           value={stats?.facultyByDepartment?.length || 0}
@@ -518,7 +525,7 @@ export function DashboardView() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SchedulesChart
           data={stats?.schedulesByDay || []}
           title="Schedules by Day"
@@ -534,171 +541,214 @@ export function DashboardView() {
       </div>
 
       {/* Recent Activity & Conflicts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Recent Schedules */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Recent Schedules
-            </CardTitle>
-            <CardDescription>Latest schedule assignments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-64">
-              {recentSchedules.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No schedules generated yet
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {recentSchedules.map((schedule, index) => (
-                    <div key={schedule.id}>
-                      {index > 0 && <Separator className="mb-4" />}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{schedule.subject?.subjectName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {schedule.faculty?.name} • {schedule.room?.roomName}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{schedule.day}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {schedule.startTime} - {schedule.endTime}
-                          </p>
-                        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Card
+            className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow"
+            style={{ borderRadius: '20px' }}
+          >
+            <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+            <div className="relative">
+              <CardHeader className="px-5 pt-5">
+                <CardTitle className="flex items-center gap-2 dark:text-[#F8FAFC]">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-red-500/10 dark:bg-[#EF4444]/10">
+                    <Clock className="h-4 w-4 text-red-500 dark:text-[#EF4444]" />
+                  </div>
+                  Recent Schedules
+                </CardTitle>
+                <CardDescription className="dark:text-[#64748B]">Latest schedule assignments</CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <ScrollArea className="h-64 premium-scrollbar">
+                  {recentSchedules.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="rounded-2xl bg-muted/50 dark:bg-[#334155]/30 p-5 mb-4">
+                        <Calendar className="h-8 w-8 text-muted-foreground dark:text-[#64748B]" />
                       </div>
+                      <p className="font-semibold dark:text-[#F8FAFC]">No schedules generated yet</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentSchedules.map((schedule, index) => (
+                        <div key={schedule.id}>
+                          {index > 0 && <Separator className="mb-3 dark:bg-[#334155]/50" />}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium dark:text-[#F8FAFC]">{schedule.subject?.subjectName}</p>
+                              <p className="text-sm text-muted-foreground dark:text-[#64748B]">
+                                {schedule.faculty?.name} • {schedule.room?.roomName}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium dark:text-[#F8FAFC]">{schedule.day}</p>
+                              <p className="text-xs text-muted-foreground dark:text-[#64748B]">
+                                {schedule.startTime} - {schedule.endTime}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </div>
+          </Card>
+        </motion.div>
 
         {/* Conflicts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Active Conflicts
-            </CardTitle>
-            <CardDescription>Scheduling conflicts that need resolution</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-64">
-              {conflicts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="rounded-full bg-emerald-500/10 p-3 mb-4">
-                    <Activity className="h-6 w-6 text-emerald-500" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+        >
+          <Card
+            className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow"
+            style={{ borderRadius: '20px' }}
+          >
+            <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+            <div className="relative">
+              <CardHeader className="px-5 pt-5">
+                <CardTitle className="flex items-center gap-2 dark:text-[#F8FAFC]">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-red-500/10 dark:bg-[#EF4444]/10">
+                    <AlertTriangle className="h-4 w-4 text-red-500 dark:text-[#EF4444]" />
                   </div>
-                  <p className="font-medium">No Conflicts</p>
-                  <p className="text-sm text-muted-foreground">
-                    All schedules are conflict-free
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {conflicts.map((conflict, index) => (
-                    <div key={conflict.id}>
-                      {index > 0 && <Separator className="mb-4" />}
-                      <div className="flex items-start gap-3">
-                        <div className={`rounded-full p-1.5 ${
-                          conflict.severity === 'critical' 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'bg-amber-500/10 text-amber-500'
-                        }`}>
-                          <AlertTriangle className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium capitalize">
-                            {conflict.type.replace(/_/g, ' ')}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {conflict.description}
-                          </p>
-                        </div>
-                        <Badge variant={conflict.severity === 'critical' ? 'destructive' : 'secondary'}>
-                          {conflict.severity}
-                        </Badge>
+                  Active Conflicts
+                </CardTitle>
+                <CardDescription className="dark:text-[#64748B]">Scheduling conflicts that need resolution</CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <ScrollArea className="h-64 premium-scrollbar">
+                  {conflicts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/10 p-5 mb-4">
+                        <Activity className="h-8 w-8 text-emerald-500 dark:text-emerald-400" />
                       </div>
+                      <p className="font-semibold dark:text-[#F8FAFC]">No Conflicts</p>
+                      <p className="text-sm text-muted-foreground dark:text-[#64748B]">
+                        All schedules are conflict-free
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {conflicts.map((conflict, index) => (
+                        <div key={conflict.id}>
+                          {index > 0 && <Separator className="mb-3 dark:bg-[#334155]/50" />}
+                          <div className="flex items-start gap-3">
+                            <div className={`rounded-xl p-1.5 ${
+                              conflict.severity === 'critical' 
+                                ? 'bg-red-500/10 text-red-500 dark:bg-[#EF4444]/10 dark:text-[#EF4444]' 
+                                : 'bg-amber-500/10 text-amber-500 dark:bg-amber-500/10 dark:text-amber-400'
+                            }`}>
+                              <AlertTriangle className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium capitalize dark:text-[#F8FAFC]">
+                                {conflict.type.replace(/_/g, ' ')}
+                              </p>
+                              <p className="text-sm text-muted-foreground dark:text-[#64748B]">
+                                {conflict.description}
+                              </p>
+                            </div>
+                            <Badge variant={conflict.severity === 'critical' ? 'destructive' : 'secondary'} className="dark:bg-[#334155] dark:text-[#CBD5E1]">
+                              {conflict.severity}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </div>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Faculty Utilization */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Faculty Load Distribution</CardTitle>
-          <CardDescription>Current teaching load vs maximum capacity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Overall Utilization</span>
-              <span className="font-medium">{stats?.facultyUtilizationAvg || 0}%</span>
-            </div>
-            <Progress value={stats?.facultyUtilizationAvg || 0} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Underloaded: {stats?.underloadedFaculty || 0}</span>
-              <span>Optimal</span>
-              <span>Overloaded: {stats?.overloadedFaculty || 0}</span>
-            </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
+        <Card
+          className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow"
+          style={{ borderRadius: '20px' }}
+        >
+          <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+          <div className="relative">
+            <CardHeader className="px-5 pt-5">
+              <CardTitle className="dark:text-[#F8FAFC]">Faculty Load Distribution</CardTitle>
+              <CardDescription className="dark:text-[#64748B]">Current teaching load vs maximum capacity</CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground dark:text-[#94A3B8]">Overall Utilization</span>
+                  <span className="font-semibold dark:text-[#F8FAFC]">{stats?.facultyUtilizationAvg || 0}%</span>
+                </div>
+                <Progress value={stats?.facultyUtilizationAvg || 0} className="h-2.5 dark:bg-[#334155]" />
+                <div className="flex justify-between text-xs text-muted-foreground dark:text-[#64748B]">
+                  <span>Underloaded: {stats?.underloadedFaculty || 0}</span>
+                  <span>Optimal</span>
+                  <span>Overloaded: {stats?.overloadedFaculty || 0}</span>
+                </div>
+              </div>
+            </CardContent>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="dark:bg-[#1E293B] dark:border-[#334155]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
+            <AlertDialogTitle className="flex items-center gap-2 dark:text-[#F8FAFC]">
+              <Zap className="h-5 w-5 text-red-500 dark:text-[#EF4444]" />
               Generate Schedules
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 mt-2">
-                <p>
+                <p className="dark:text-[#CBD5E1]">
                   This will generate a new schedule for all sections, faculty, and subjects in the system.
                 </p>
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                  <p className="text-sm font-medium">What happens when you proceed:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1.5">
+                <div className="bg-muted/50 dark:bg-[#334155]/30 rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-medium dark:text-[#F8FAFC]">What happens when you proceed:</p>
+                  <ul className="text-sm text-muted-foreground dark:text-[#94A3B8] space-y-1.5">
                     <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <span>Existing schedules will be cleared</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <span>New schedules will be assigned based on faculty preferences</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <span>Conflicts will be detected and recorded</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <span>Faculty will be notified of their new assignments</span>
                     </li>
                   </ul>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-[#94A3B8]">
                   The system will check for preference conflicts before generation.
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="dark:bg-[#334155] dark:text-[#CBD5E1] dark:border-[#334155] dark:hover:bg-[#475569]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmGeneration}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-red-600 hover:bg-red-700 dark:bg-[#EF4444] dark:hover:bg-[#DC2626] text-white"
             >
               <Zap className="h-4 w-4 mr-2" />
               Start Generation
@@ -709,19 +759,19 @@ export function DashboardView() {
 
       {/* Pre-generation Warning Dialog */}
       <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
-        <AlertDialogContent className="max-w-lg">
+        <AlertDialogContent className="max-w-lg dark:bg-[#1E293B] dark:border-[#334155]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
+            <AlertDialogTitle className="flex items-center gap-2 dark:text-[#F8FAFC]">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               Schedule Generation Warnings
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 mt-2">
-                <p>
+                <p className="dark:text-[#CBD5E1]">
                   The following potential conflicts were detected. The system can still generate schedules, 
                   but some faculty preferences may not be fully satisfied.
                 </p>
-                <ScrollArea className="max-h-[300px] rounded-md border p-3">
+                <ScrollArea className="max-h-[300px] rounded-xl border dark:border-[#334155] p-3">
                   <AnimatePresence>
                     {preGenerationWarnings.map((warning, index) => (
                       <motion.div
@@ -730,7 +780,7 @@ export function DashboardView() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
                         className={cn(
-                          'p-3 rounded-lg mb-2 last:mb-0',
+                          'p-3 rounded-xl mb-2 last:mb-0',
                           warning.severity === 'warning' 
                             ? 'bg-amber-500/10 border border-amber-500/20' 
                             : 'bg-blue-500/10 border border-blue-500/20'
@@ -743,10 +793,10 @@ export function DashboardView() {
                             <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                           )}
                           <div>
-                            <p className="text-sm font-medium">{warning.type.replace(/_/g, ' ')}</p>
-                            <p className="text-sm text-muted-foreground">{warning.message}</p>
+                            <p className="text-sm font-medium dark:text-[#F8FAFC]">{warning.type.replace(/_/g, ' ')}</p>
+                            <p className="text-sm text-muted-foreground dark:text-[#94A3B8]">{warning.message}</p>
                             {warning.faculty && warning.faculty.length > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-muted-foreground dark:text-[#64748B] mt-1">
                                 Affected: {warning.faculty.map(f => typeof f === 'string' ? f : f.name).join(', ')}
                               </p>
                             )}
@@ -756,7 +806,7 @@ export function DashboardView() {
                     ))}
                   </AnimatePresence>
                 </ScrollArea>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-[#94A3B8]">
                   The scheduling algorithm will use load balancing and specialization matching 
                   to resolve these conflicts automatically.
                 </p>
@@ -764,10 +814,10 @@ export function DashboardView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="dark:bg-[#334155] dark:text-[#CBD5E1] dark:border-[#334155] dark:hover:bg-[#475569]">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeGeneration}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-red-600 hover:bg-red-700 dark:bg-[#EF4444] dark:hover:bg-[#DC2626] text-white"
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Proceed with Generation

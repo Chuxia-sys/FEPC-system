@@ -353,3 +353,29 @@ Stage Summary:
   - src/app/api/conflicts/[id]/alternatives/route.ts (NEW)
   - src/app/api/conflicts/[id]/manual-resolve/route.ts (NEW)
   - src/components/tables/ConflictView.tsx (complete rewrite)
+---
+Task ID: 1
+Agent: Main Agent
+Task: Create premium modern dark-mode dashboard UI for TCU scheduling system
+
+Work Log:
+- Updated globals.css with new dark mode color palette: #0F172A (background), #111827 (sidebar), #1E293B (cards), #334155 (elevated hover), #EF4444 (primary red accent)
+- Added premium CSS utility classes: .header-gradient, .sidebar-item-active, .stat-card-glow, .donut-center-glow, .glass-search
+- Updated scrollbar styling for dark mode (track: #1E293B, thumb: rgba(255,255,255,0.12))
+- Redesigned Header.tsx: 72px height, deep red gradient in dark mode (linear-gradient 90deg, #7F1D1D → #991B1B → #B91C1C), pill-shaped search bar with glass effect, rounded notification badges
+- Redesigned Sidebar.tsx: #111827 background, 260px width (68px collapsed), red translucent active items with left border indicator, hover animation with translate-x, premium rounded corners
+- Redesigned StatsCard.tsx: 20px border radius, premium shadow system (stat-card-glow), hover elevation with red glow border, larger metric numbers (28-32px), icon containers with red accents
+- Redesigned SchedulesChart.tsx: Red gradient bars (linear-gradient 180deg, #EF4444 → #B91C1C), custom dark tooltip (ChartTooltip component), subtle grid lines (rgba(255,255,255,0.06)), donut chart with red palette
+- Redesigned DashboardView.tsx: Premium welcome section with Sparkles icon, large heading (3xl-5xl), emoji welcome text, 20px card radius throughout, dark mode specific text colors (#F8FAFC, #94A3B8, #64748B), generate button with red shadow
+- Updated AppShell.tsx: New sidebar widths (260px/68px), matching background, more generous padding (p-4/p-5/p-8)
+- Updated Footer.tsx: Gradient top accent line, dark mode colors, subtle red accents
+- Updated MobileBottomNav.tsx: Dark mode bottom nav (#111827/95), red active indicators
+- Fixed ESLint error: Moved ChartTooltip component outside render function
+
+Stage Summary:
+- Complete premium dark-mode dashboard UI implemented
+- Color palette: #0F172A base with layered dark surfaces
+- All components updated with consistent design language
+- Light mode preserved, dark mode fully redesigned
+- Server running and compiling successfully
+- ESLint clean (only pre-existing TanStack Table warning)

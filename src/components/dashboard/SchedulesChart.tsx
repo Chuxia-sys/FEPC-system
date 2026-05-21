@@ -34,93 +34,110 @@ interface SchedulesChartProps {
   type: 'bar' | 'pie' | 'line';
 }
 
-// TCU crimson/maroon/gold palette for charts
-const CRIMSON_COLORS = [
-  '#8B0000', // Deep Crimson
-  '#C00018', // Rich Red
-  '#6D0000', // Dark Maroon
-  '#A5001F', // Crimson Lighter
-  '#D4AF37', // Soft Gold
+// Premium red palette for dark mode
+const RED_PALETTE = [
+  '#EF4444', // Primary red
+  '#B91C1C', // Dark red
+  '#F87171', // Light red
+  '#991B1B', // Deep red
+  '#D4AF37', // Gold accent
 ];
 
-// TCU crimson gradient
-const CRIMSON_GRADIENT = {
-  start: '#8B0000', // Deep Crimson
-  end: '#6D0000', // Dark Maroon
-};
+// Custom tooltip — declared outside render to avoid re-creation
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1E293B] dark:bg-[#1E293B] border border-[#334155] rounded-xl px-4 py-3 shadow-xl shadow-black/30">
+        <p className="text-xs font-medium text-[#94A3B8] mb-1">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm font-semibold text-[#F8FAFC]">
+            {entry.name}: {entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
 
 export function SchedulesChart({ data, title, description, type }: SchedulesChartProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.1 }}
+      transition={{ duration: 0.4, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
-      <Card className="relative overflow-hidden border-0 shadow-lg">
-        <div className="absolute inset-0 bg-gradient-to-br from-card via-card to-primary/5 dark:from-card dark:via-card dark:to-transparent pointer-events-none rounded-lg" />
+      <Card
+        className="relative overflow-hidden border-0 shadow-lg dark:bg-[#1E293B] dark:shadow-black/35 dark:stat-card-glow transition-all duration-300"
+        style={{ borderRadius: '20px' }}
+      >
+        {/* Subtle border */}
+        <div className="absolute inset-0 rounded-[20px] border border-white/[0.05] dark:border-white/[0.05] pointer-events-none" />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 rounded-[20px] bg-gradient-to-br from-transparent via-transparent to-red-500/[0.02] dark:to-[#EF4444]/[0.03] pointer-events-none" />
+
         <div className="relative">
-          <CardHeader>
+          <CardHeader className="px-5 pt-5 pb-2">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20">
+              <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-red-500/10 dark:bg-[#EF4444]/10">
                 {type === 'pie' ? (
-                  <PieChartIcon className="w-5 h-5 text-primary dark:text-primary" />
+                  <PieChartIcon className="w-5 h-5 text-red-500 dark:text-[#EF4444]" />
                 ) : (
-                  <BarChart3 className="w-5 h-5 text-primary dark:text-primary" />
+                  <BarChart3 className="w-5 h-5 text-red-500 dark:text-[#EF4444]" />
                 )}
               </div>
               <div>
-                <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-                {description && <CardDescription>{description}</CardDescription>}
+                <CardTitle className="text-base font-semibold dark:text-[#F8FAFC]">{title}</CardTitle>
+                {description && <CardDescription className="dark:text-[#64748B]">{description}</CardDescription>}
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-5 pb-5">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 {type === 'bar' ? (
                   <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="crimsonBarGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={CRIMSON_GRADIENT.start} stopOpacity={1} />
-                        <stop offset="50%" stopColor="#C00018" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor={CRIMSON_GRADIENT.end} stopOpacity={0.5} />
+                      {/* Red gradient for bars — the premium look */}
+                      <linearGradient id="redBarGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#EF4444" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#B91C1C" stopOpacity={0.8} />
                       </linearGradient>
-                      <linearGradient id="crimsonBarGradientDark" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#C00018" stopOpacity={1} />
-                        <stop offset="50%" stopColor="#A5001F" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#8B0000" stopOpacity={0.6} />
+                      <linearGradient id="redBarGradientLight" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8B0000" stopOpacity={1} />
+                        <stop offset="50%" stopColor="#C00018" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="#6D0000" stopOpacity={0.6} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.06)"
+                      vertical={false}
+                    />
                     <XAxis
                       dataKey="day"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 11 }}
+                      tick={{ fontSize: 12, fill: '#94A3B8' }}
                     />
-                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        padding: '12px 16px',
-                      }}
-                      cursor={{ fill: 'rgba(139,0,0,0.1)' }}
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: '#94A3B8' }}
                     />
-                    <Bar 
-                      dataKey="count" 
-                      fill="url(#crimsonBarGradient)" 
-                      radius={[6, 6, 0, 0]} 
-                      maxBarSize={50}
-                      className="dark:[fill:url(#crimsonBarGradientDark)]"
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(239, 68, 68, 0.06)' }} />
+                    <Bar
+                      dataKey="count"
+                      fill="url(#redBarGradientLight)"
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={45}
+                      className="dark:[fill:url(#redBarGradient)]"
                     />
                   </BarChart>
                 ) : type === 'pie' ? (
                   <PieChart>
                     <defs>
-                      {CRIMSON_COLORS.map((color, index) => (
+                      {RED_PALETTE.map((color, index) => (
                         <linearGradient key={`pieGradient-${index}`} id={`pieGradient-${index}`} x1="0" y1="0" x2="1" y2="1">
                           <stop offset="0%" stopColor={color} stopOpacity={1} />
                           <stop offset="100%" stopColor={color} stopOpacity={0.7} />
@@ -131,53 +148,44 @@ export function SchedulesChart({ data, title, description, type }: SchedulesChar
                       data={data}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
+                      innerRadius={65}
+                      outerRadius={90}
+                      paddingAngle={4}
                       dataKey="value"
+                      strokeWidth={0}
                     >
                       {data.map((_, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={`url(#pieGradient-${index % CRIMSON_COLORS.length})`}
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={`url(#pieGradient-${index % RED_PALETTE.length})`}
                           stroke="transparent"
                         />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '12px',
-                      }}
+                    <Tooltip content={<ChartTooltip />} />
+                    <Legend
+                      wrapperStyle={{ fontSize: '12px', color: '#94A3B8' }}
                     />
-                    <Legend />
                   </PieChart>
                 ) : (
                   <LineChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#C00018" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#8B0000" stopOpacity={0.3} />
+                      <linearGradient id="lineGradientRed" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#EF4444" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#B91C1C" stopOpacity={0.3} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '12px',
-                      }}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#94A3B8' }} />
+                    <Tooltip content={<ChartTooltip />} />
                     <Line
                       type="monotone"
                       dataKey="count"
-                      stroke="#8B0000"
+                      stroke="#EF4444"
                       strokeWidth={3}
-                      dot={{ fill: '#8B0000', strokeWidth: 2, r: 4 }}
-                      activeDot={{ fill: '#C00018', strokeWidth: 2, r: 6 }}
+                      dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
+                      activeDot={{ fill: '#EF4444', strokeWidth: 2, r: 6 }}
                     />
                   </LineChart>
                 )}

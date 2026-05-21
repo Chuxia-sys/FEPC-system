@@ -45,7 +45,7 @@ export function Header() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Fetch user image separately (not stored in JWT to prevent token size issues)
+  // Fetch user image separately
   useEffect(() => {
     const fetchUserImage = async () => {
       if (!session?.user?.id) return;
@@ -57,7 +57,6 @@ export function Header() {
         console.error('Error fetching user image:', error);
       }
     };
-    
     fetchUserImage();
   }, [session?.user?.id]);
 
@@ -98,7 +97,6 @@ export function Header() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ markAllRead: true, userId: session?.user?.id }),
       });
-      // Optimistically mark all as read locally
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
@@ -119,20 +117,14 @@ export function Header() {
   // Get notification type color
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'info':
-        return 'bg-blue-500';
-      case 'warning':
-        return 'bg-yellow-500';
-      case 'success':
-        return 'bg-green-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
+      case 'info': return 'bg-blue-500';
+      case 'warning': return 'bg-yellow-500';
+      case 'success': return 'bg-green-500';
+      case 'error': return 'bg-red-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  // Calculate unread count (with safety check)
   const unreadCount = Array.isArray(notifications) ? notifications.filter((n) => !n.read).length : 0;
 
   const getRoleBadge = (role: string) => {
@@ -165,36 +157,36 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center gap-2 sm:gap-4 border-b border-[#6B0000] bg-[#8B0000] px-4 lg:px-6 shrink-0">
-      {/* Logo for mobile - only shows on mobile since sidebar is hidden */}
+    <header className="sticky top-0 z-30 flex h-14 md:h-[72px] items-center gap-2 sm:gap-4 border-b border-[#6B0000]/50 bg-[#8B0000] dark:border-transparent dark:header-gradient px-4 lg:px-6 shrink-0">
+      {/* Logo for mobile */}
       <div className="flex items-center gap-2.5 md:hidden shrink-0 ml-1">
-        <div className="bg-white rounded-lg p-1 shrink-0">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-1.5 shrink-0">
           <Image
             src="/tcu-logo.png"
             alt="TCU Logo"
-            width={36}
-            height={36}
+            width={32}
+            height={32}
             className="object-contain"
           />
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-sm text-white leading-none">TCU</span>
-          <span className="text-[9px] text-white/60 font-medium leading-none mt-0.5">Scheduling System</span>
+          <span className="font-bold text-sm text-white leading-none tracking-wide">TCU</span>
+          <span className="text-[9px] text-white/50 font-medium leading-none mt-0.5">Scheduling System</span>
         </div>
       </div>
 
-      {/* Search - hidden on mobile */}
+      {/* Search bar — hidden on mobile */}
       <div className="hidden md:block w-full max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+        <div className="relative glass-search rounded-full border border-white/10 dark:border-white/[0.06] transition-all duration-300">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40 dark:text-white/30" />
           <Input
             placeholder="Search schedules, faculty, rooms..."
-            className="pl-10 h-9 bg-white/15 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white/40 rounded-lg"
+            className="pl-10 h-10 bg-transparent border-0 text-white placeholder:text-white/40 dark:placeholder:text-white/30 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-full text-sm"
           />
         </div>
       </div>
 
-      {/* Spacer to push actions to the right */}
+      {/* Spacer */}
       <div className="flex-1" />
 
       {/* Right side actions */}
@@ -205,28 +197,28 @@ export function Header() {
             variant="ghost"
             size="icon"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/15"
+            className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-white/[0.08] rounded-xl transition-all duration-200"
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </Button>
         )}
 
         {/* Notifications Dropdown */}
         <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 text-white/80 hover:text-white hover:bg-white/15">
-              <Bell className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="relative h-9 w-9 text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-white/[0.08] rounded-xl transition-all duration-200">
+              <Bell className="h-[18px] w-[18px]" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 text-amber-900 text-xs font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 dark:bg-[#EF4444] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-red-500/30">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0">
+          <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 dark:bg-[#1E293B] dark:border-[#334155]">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div className="flex items-center justify-between px-4 py-3 border-b dark:border-[#334155]">
               <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
               {unreadCount > 0 && (
                 <Button
@@ -248,29 +240,25 @@ export function Header() {
                 <p className="text-sm text-muted-foreground">No notifications</p>
               </div>
             ) : (
-              <div className="max-h-[300px] overflow-y-auto">
+              <div className="max-h-[300px] overflow-y-auto premium-scrollbar">
                 {notifications.slice(0, 5).map((n) => (
                   <div
                     key={n.id}
-                    className={`flex items-start gap-3 p-3 hover:bg-muted/50 relative group cursor-pointer ${
-                      !n.read ? 'bg-muted/30' : ''
+                    className={`flex items-start gap-3 p-3 hover:bg-muted/50 dark:hover:bg-[#334155]/50 relative group cursor-pointer transition-colors ${
+                      !n.read ? 'bg-muted/30 dark:bg-[#334155]/30' : ''
                     }`}
                     onClick={() => {
                       setNotificationsOpen(false);
                       setViewMode('notifications');
                     }}
                   >
-                    {/* Type indicator dot with unread ring */}
                     <div className="relative mt-2 shrink-0">
-                      <div
-                        className={`w-2 h-2 rounded-full ${getTypeColor(n.type)}`}
-                      />
+                      <div className={`w-2 h-2 rounded-full ${getTypeColor(n.type)}`} />
                       {!n.read && (
                         <div className={`absolute inset-0 w-2 h-2 rounded-full ${getTypeColor(n.type)} animate-ping opacity-50`} />
                       )}
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0 pl-1">
                       {n.title && (
                         <p className="text-sm font-medium leading-tight truncate">{n.title}</p>
@@ -281,7 +269,6 @@ export function Header() {
                       </p>
                     </div>
 
-                    {/* Delete button (visible on hover) */}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -295,10 +282,9 @@ export function Header() {
               </div>
             )}
 
-            {/* View All Link */}
             {notifications.length > 5 && (
               <>
-                <DropdownMenuSeparator className="m-0" />
+                <DropdownMenuSeparator className="m-0 dark:bg-[#334155]" />
                 <DropdownMenuItem
                   className="justify-center text-primary cursor-pointer"
                   onClick={() => {
@@ -316,16 +302,16 @@ export function Header() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full text-white/80 hover:text-white hover:bg-white/15">
-              <Avatar className="h-8 w-8 ring-2 ring-white/30">
+            <Button variant="ghost" className="relative h-9 w-9 rounded-xl text-white/70 hover:text-white hover:bg-white/10 dark:hover:bg-white/[0.08] transition-all duration-200">
+              <Avatar className="h-8 w-8 ring-2 ring-white/20 dark:ring-white/10">
                 <AvatarImage src={userImage || ''} alt={session?.user?.name || ''} />
-                <AvatarFallback className="bg-white/20 text-white text-xs font-semibold">
+                <AvatarFallback className="bg-white/15 dark:bg-white/10 text-white text-xs font-semibold">
                   {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuContent className="w-56 dark:bg-[#1E293B] dark:border-[#334155]" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{session?.user?.name}</p>
@@ -335,7 +321,7 @@ export function Header() {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="dark:bg-[#334155]" />
             <DropdownMenuItem onClick={() => setViewMode('profile')}>
               <User className="mr-2 h-4 w-4" />
               Profile
@@ -346,7 +332,7 @@ export function Header() {
                 Settings
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="dark:bg-[#334155]" />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Sign out

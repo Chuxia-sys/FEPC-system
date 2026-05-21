@@ -87,46 +87,48 @@
 }
 
 .dark {
-  /* TCU — Premium Academic Theme — Dark Mode
-     Solid dark colors only. NO gradients.
-     Premium, minimal, modern, clean, enterprise-grade.
-     Base dark background: #393E46 (blue-gray)
-     Palette derived from base for depth hierarchy:
-       Background  <  Muted/Secondary  <  Card  <  Accent/Border */
-  --background: #393E46;
-  --foreground: #FFFFFF;
-  --card: #444951;
-  --card-foreground: #FFFFFF;
-  --popover: #444951;
-  --popover-foreground: #FFFFFF;
-  --primary: #C00018;             /* Rich Red (lighter for dark mode) */
+  /* TCU — Premium Modern SaaS Dashboard — Dark Mode
+     Inspired by Linear, Vercel, Stripe, GitHub dashboards.
+     Primary Background: #0F172A (deep navy)
+     Sidebar: #111827 (slate-900)
+     Cards: #1E293B (slate-800)
+     Elevated Hover: #334155 (slate-700)
+     Primary Accent: #EF4444 (red-500)
+     Clean depth hierarchy through layered surfaces + shadows */
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  --primary: #EF4444;             /* Red accent */
   --primary-foreground: #FFFFFF;
-  --secondary: #3E434B;
+  --secondary: #1E293B;           /* Same as card for subtle surfaces */
   --secondary-foreground: #CBD5E1;
-  --muted: #3E434B;
-  --muted-foreground: #CBD5E1;
-  --accent: #4D525A;
-  --accent-foreground: #FFFFFF;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #334155;              /* Elevated hover surface */
+  --accent-foreground: #F8FAFC;
   --destructive: #EF4444;
-  --border: #4D525A;
-  --input: #4D525A;
-  --ring: #C00018;
+  --border: #334155;              /* Subtle but visible borders */
+  --input: #334155;
+  --ring: #EF4444;
   --gold: #D4AF37;
-  --crimson: #C00018;
-  --maroon: #6D0000;
-  --chart-1: #C00018;
-  --chart-2: #8B0000;
+  --crimson: #EF4444;
+  --maroon: #B91C1C;
+  --chart-1: #EF4444;
+  --chart-2: #B91C1C;
   --chart-3: #D4AF37;
-  --chart-4: #A5001F;
-  --chart-5: #6D0000;
-  --sidebar: #393E46;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #C00018;
+  --chart-4: #F87171;
+  --chart-5: #991B1B;
+  --sidebar: #111827;
+  --sidebar-foreground: #CBD5E1;
+  --sidebar-primary: #EF4444;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #4D525A;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #4D525A;
-  --sidebar-ring: #C00018;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: #1E293B;
+  --sidebar-ring: #EF4444;
 }
 
 @layer base {
@@ -159,12 +161,12 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
-  /* Card hover elevation */
+  /* Card hover elevation — premium SaaS style */
   .card-hover {
     @apply transition-all duration-300;
   }
   .card-hover:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
     transform: translateY(-2px);
   }
 
@@ -219,13 +221,14 @@
 
   /* Premium scrollbar — dark mode */
   .dark .premium-scrollbar::-webkit-scrollbar-track {
-    background: #3E434B;
+    background: #1E293B;
   }
   .dark .premium-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
   }
   .dark .premium-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.22);
   }
 
   /* Crimson solid background (no gradient) */
@@ -252,9 +255,7 @@
     100% { background-position: 200% 0; }
   }
 
-  /* Schedule card hover — subtle dimming effect that preserves
-     the card's original colors. Uses filter: brightness() for a
-     smooth, non-distracting interaction. */
+  /* Schedule card hover — subtle dimming effect */
   .schedule-card-hover {
     position: relative;
     transition: all 0.2s ease;
@@ -266,15 +267,43 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
-  /* Dark mode — slightly stronger dim for visibility on dark bg */
   .dark .schedule-card-hover:hover {
     filter: brightness(0.9);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
-  /* Dark mode overrides — ensure no gradients bleed through */
-  .dark .bg-crimson-gradient,
-  .dark [class*="bg-gradient"] {
-    background-image: none !important;
+  /* Header red gradient for dark mode */
+  .dark .header-gradient {
+    background: linear-gradient(90deg, #7F1D1D 0%, #991B1B 50%, #B91C1C 100%);
+  }
+
+  /* Sidebar glow effect for active items in dark mode */
+  .dark .sidebar-item-active {
+    background: rgba(239, 68, 68, 0.1);
+    border-left-color: #EF4444;
+  }
+
+  /* Premium stat card glow in dark mode */
+  .dark .stat-card-glow {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  .dark .stat-card-glow:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(239, 68, 68, 0.2), 0 0 20px rgba(239, 68, 68, 0.05);
+  }
+
+  /* Donut chart center glow */
+  .donut-center-glow {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.15);
+  }
+
+  /* Glassmorphism effect for header search in dark mode */
+  .dark .glass-search {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .glass-search:focus-within {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.1);
   }
 }
