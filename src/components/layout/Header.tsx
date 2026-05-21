@@ -157,7 +157,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-[72px] items-center gap-2 sm:gap-4 border-b border-[#6B0000]/50 bg-[#8B0000] dark:border-transparent dark:header-gradient px-4 lg:px-6 shrink-0">
+    <header className="sticky top-0 z-30 flex h-14 md:h-[72px] items-center gap-2 sm:gap-4 border-b border-[#cc0000]/50 bg-[#ff0000] dark:border-transparent dark:header-gradient px-4 lg:px-6 shrink-0">
       {/* Logo for mobile */}
       <div className="flex items-center gap-2.5 md:hidden shrink-0 ml-1">
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-1.5 shrink-0">

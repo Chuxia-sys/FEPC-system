@@ -91,12 +91,12 @@ function NavButton({
         // Collapsed layout
         collapsed && 'justify-center p-2.5 mx-auto w-10 h-10',
         // Active state — red translucent bg + red left border
-        isActive && !collapsed && 'bg-red-500/[0.08] dark:bg-red-500/[0.12] text-white dark:text-[#F8FAFC] border-l-2 border-red-500 dark:border-[#EF4444] pl-[calc(0.875rem-2px)]',
+        isActive && !collapsed && 'bg-red-50 dark:bg-red-500/[0.12] text-red-700 dark:text-[#F8FAFC] border-l-2 border-red-600 dark:border-[#EF4444] pl-[calc(0.875rem-2px)]',
         // Active collapsed — solid red bg
-        isActive && collapsed && 'bg-red-500 dark:bg-[#EF4444] text-white shadow-lg shadow-red-500/25 dark:shadow-[#EF4444]/25',
+        isActive && collapsed && 'bg-red-600 dark:bg-[#EF4444] text-white shadow-lg shadow-red-500/25 dark:shadow-[#EF4444]/25',
         // Inactive state
-        !isActive && !collapsed && 'text-white/60 dark:text-[#94A3B8] border-l-2 border-transparent hover:bg-white/[0.06] dark:hover:bg-white/[0.06] hover:text-white dark:hover:text-[#F8FAFC] hover:translate-x-0.5',
-        !isActive && collapsed && 'text-white/60 dark:text-[#94A3B8] hover:bg-white/[0.06] dark:hover:bg-white/[0.06] hover:text-white dark:hover:text-[#F8FAFC]',
+        !isActive && !collapsed && 'text-gray-600 dark:text-[#94A3B8] border-l-2 border-transparent hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-[#F8FAFC] hover:translate-x-0.5',
+        !isActive && collapsed && 'text-gray-600 dark:text-[#94A3B8] hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-[#F8FAFC]',
       )}
     >
       <Icon className={cn(
@@ -104,13 +104,13 @@ function NavButton({
         // Active + collapsed: white icon on red bg
         isActive && collapsed ? 'text-white' : '',
         // Active + expanded: red accent icon
-        isActive && !collapsed ? 'text-red-500 dark:text-[#EF4444]' : '',
-        // Inactive: muted color
-        !isActive ? 'text-white/60 dark:text-[#94A3B8]' : '',
+        isActive && !collapsed ? 'text-red-600 dark:text-[#EF4444]' : '',
+        // Inactive: muted color (visible on both light/dark)
+        !isActive ? 'text-gray-500 dark:text-[#94A3B8]' : '',
       )} />
       {!collapsed && <span className="truncate">{item.label}</span>}
       {!collapsed && item.badge && (
-        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 dark:bg-[#EF4444] text-[10px] text-white font-semibold shadow-sm">
+        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-600 dark:bg-[#EF4444] text-[10px] text-white font-semibold shadow-sm">
           {item.badge}
         </span>
       )}
@@ -165,7 +165,7 @@ export function Sidebar() {
         <div
           className={cn(
             'flex items-center shrink-0 h-14 md:h-[72px] transition-colors duration-300',
-            'bg-[#8B0000] dark:header-gradient border-b border-[#6B0000]/50 dark:border-[#991B1B]/50',
+            'bg-[#ff0000] dark:header-gradient border-b border-[#cc0000]/50 dark:border-[#991B1B]/50',
             sidebarCollapsed ? '' : 'gap-2 px-4'
           )}
         >
