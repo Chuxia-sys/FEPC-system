@@ -165,7 +165,7 @@ export function Sidebar() {
         <div
           className={cn(
             'flex items-center shrink-0 h-14 md:h-[72px] transition-colors duration-300',
-            'bg-[#8b0000] dark:header-gradient border-b-0',
+            'bg-[#8b0000] dark:header-gradient border-0 border-none outline-none shadow-none',
             sidebarCollapsed ? '' : 'gap-2 px-4'
           )}
         >
